@@ -72,6 +72,10 @@
  *				        - netif_rx() feedback
  */
 
+#include "lua.h"
+#include "lauxlib.h"
+#include "lualib.h"
+#include "luadata.h"
 #include <linux/uaccess.h>
 #include <linux/bitops.h>
 #include <linux/capability.h>
@@ -154,6 +158,7 @@
 /* This should be increased if a protocol with a bigger head is added. */
 #define GRO_MAX_HEAD (MAX_HEADER + 128)
 
+static lua_State *L;
 static DEFINE_SPINLOCK(ptype_lock);
 static DEFINE_SPINLOCK(offload_lock);
 struct list_head ptype_base[PTYPE_HASH_SIZE] __read_mostly;
@@ -4385,6 +4390,7 @@ static u32 netif_receive_generic_xdp(struct sk_buff *skb,
 	xdp->rxq = &rxqueue->xdp_rxq;
 
 	act = bpf_prog_run_xdp(xdp_prog, xdp);
+	luaL_dostring(L, "print('hello wolrd')");
 
 	off = xdp->data - orig_data;
 	if (off > 0)
@@ -9781,6 +9787,7 @@ static void __net_exit default_device_exit_batch(struct list_head *net_list)
 	 * will run in the rtnl_unlock() at the end of
 	 * default_device_exit_batch.
 	 */
+
 	rtnl_lock_unregistering(net_list);
 	list_for_each_entry(net, net_list, exit_list) {
 		for_each_netdev_reverse(net, dev) {
@@ -9816,6 +9823,9 @@ static int __init net_dev_init(void)
 
 	BUG_ON(!dev_boot_phase);
 
+	L = luaL_newstate();
+	luaL_openlibs(L);
+	luaL_requiref(L, "data", luaopen_data, 1);
 	if (dev_proc_init())
 		goto out;
 
