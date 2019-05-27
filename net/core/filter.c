@@ -21,6 +21,10 @@
  * Kris Katterjohn - Added many additional checks in bpf_check_classic()
  */
 
+#include "lua.h"
+#include "lauxlib.h"
+#include "lualib.h"
+#include "luadata.h"
 #include <linux/module.h>
 #include <linux/types.h>
 #include <linux/mm.h>
@@ -5790,6 +5794,33 @@ bool bpf_helper_changes_pkt_data(void *func)
 	return false;
 }
 
+BPF_CALL_4(bpf_dummy, void *, code, void *, func, void *, pkt, u32, pktlen)
+{
+	static lua_State *L;
+
+	L = luaL_newstate();
+	luaL_openlibs(L);
+	luaL_requiref(L, "data", luaopen_data, 1);
+	luaL_dostring(L, (char*) code);
+	if (lua_getglobal(L, func) != LUA_TFUNCTION) {
+		printk(KERN_INFO "func not found");
+	} else {
+		lua_pcall(L, 0, 0, 0);
+	}
+	lua_close(L);
+	return 1;
+}
+
+static const struct bpf_func_proto bpf_dummy_proto = {
+	.func           = bpf_dummy,
+	.gpl_only       = false,
+	.ret_type       = RET_INTEGER,
+	.arg1_type      = ARG_ANYTHING,
+	.arg2_type      = ARG_ANYTHING,
+	.arg3_type      = ARG_ANYTHING,
+	.arg4_type      = ARG_ANYTHING,
+};
+
 static const struct bpf_func_proto *
 bpf_base_func_proto(enum bpf_func_id func_id)
 {
@@ -5816,6 +5847,8 @@ bpf_base_func_proto(enum bpf_func_id func_id)
 		return &bpf_tail_call_proto;
 	case BPF_FUNC_ktime_get_ns:
 		return &bpf_ktime_get_ns_proto;
+	case BPF_FUNC_dummy:
+		return &bpf_dummy_proto;
 	default:
 		break;
 	}

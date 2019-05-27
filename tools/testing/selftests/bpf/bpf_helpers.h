@@ -39,6 +39,8 @@ static unsigned long long (*bpf_get_current_uid_gid)(void) =
 	(void *) BPF_FUNC_get_current_uid_gid;
 static int (*bpf_get_current_comm)(void *buf, int buf_size) =
 	(void *) BPF_FUNC_get_current_comm;
+static int (*bpf_dummy)(void *, void *, void *, u32) =
+	(void *) BPF_FUNC_dummy;
 static unsigned long long (*bpf_perf_event_read)(void *map,
 						 unsigned long long flags) =
 	(void *) BPF_FUNC_perf_event_read;
