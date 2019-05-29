@@ -1,0 +1,6 @@
+[submodule "net/core/lunatik"]
+	path = net/core/lunatik
+	url = https://github.com/luainkernel/lunatik
+[submodule "net/core/luadata"]
+	path = net/core/luadata
+	url = https://github.com/lneto/luadata
