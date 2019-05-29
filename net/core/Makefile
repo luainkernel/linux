@@ -3,10 +3,13 @@
 # Makefile for the Linux networking core.
 #
 
+subdir-ccflags-y += -Inet/core/lunatik/lua/ -Inet/core/luadata/ -D_KERNEL
 obj-y := sock.o request_sock.o skbuff.o datagram.o stream.o scm.o \
 	 gen_stats.o gen_estimator.o net_namespace.o secure_seq.o flow_dissector.o
 
 obj-$(CONFIG_SYSCTL) += sysctl_net_core.o
+obj-y += lunatik/
+obj-y += luadata/
 
 obj-y		     += dev.o ethtool.o dev_addr_lists.o dst.o netevent.o \
 			neighbour.o rtnetlink.o utils.o link_watch.o filter.o \
