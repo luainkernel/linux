@@ -13,7 +13,7 @@
 #include <linux/bpf.h>
 #include "bpf_helpers.h"
 #include "bpf_endian.h"
-#include "xdp_tx_iptunnel_common.h"
+#include "xdp_parse_ssl_common.h"
 
 #define DEBUG 1
 #define RANDLEN 32
@@ -29,10 +29,6 @@ struct bpf_elf_map {
 	__u32 flags;
 	__u32 id;
 	__u32 pinning;
-};
-
-struct sslsni_wrapper {
-	char sslsni[100];
 };
 
 struct bpf_elf_map SEC("maps") snimap = {
