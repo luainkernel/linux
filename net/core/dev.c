@@ -9790,7 +9790,6 @@ static void __net_exit default_device_exit_batch(struct list_head *net_list)
 	 * will run in the rtnl_unlock() at the end of
 	 * default_device_exit_batch.
 	 */
-
 	rtnl_lock_unregistering(net_list);
 	list_for_each_entry(net, net_list, exit_list) {
 		for_each_netdev_reverse(net, dev) {
@@ -9828,7 +9827,6 @@ static int __init net_dev_init(void)
 
 	L = luaL_newstate();
 	luaL_openlibs(L);
-	luaL_requiref(L, "data", luaopen_data, 1);
 
 	if (dev_proc_init())
 		goto out;
