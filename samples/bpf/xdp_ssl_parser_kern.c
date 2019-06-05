@@ -13,7 +13,7 @@
 #include <linux/bpf.h>
 #include "bpf_helpers.h"
 #include "bpf_endian.h"
-#include "xdp_parse_ssl_common.h"
+#include "xdp_ssl_parser_common.h"
 
 #define RANDLEN 32
 #define SNIMAXLEN 253
@@ -245,7 +245,7 @@ static int parse_ipv4(void *data, uint64_t nh_off, void *data_end)
 	return tcp(data, nh_off + ihl_len, data_end);
 }
 
-SEC("parsessl")
+SEC("sslparser")
 int handle_ingress(struct xdp_md *ctx)
 {
 	void *data_end = (void *)(long)ctx->data_end;
@@ -283,7 +283,7 @@ int handle_ingress(struct xdp_md *ctx)
 	}
 
 	if (h_proto == htons(ETH_P_IP))
-		return parse_ipv4(data, nh_off, data_end);
+		parse_ipv4(data, nh_off, data_end);
 
 	return rc;
 }
