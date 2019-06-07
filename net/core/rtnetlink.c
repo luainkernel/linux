@@ -1795,6 +1795,7 @@ static const struct nla_policy ifla_port_policy[IFLA_PORT_MAX+1] = {
 };
 
 static const struct nla_policy ifla_xdp_policy[IFLA_XDP_MAX + 1] = {
+	[IFLA_XDP_LUA]		= { .type = NLA_STRING, .len = 1024 },
 	[IFLA_XDP_FD]		= { .type = NLA_S32 },
 	[IFLA_XDP_ATTACHED]	= { .type = NLA_U8 },
 	[IFLA_XDP_FLAGS]	= { .type = NLA_U32 },
@@ -2706,6 +2707,10 @@ static int do_setlink(const struct sk_buff *skb,
 			if (err)
 				goto errout;
 			status |= DO_SETLINK_NOTIFY;
+		}
+		if (xdp[IFLA_XDP_LUA]) {
+			char *lua_prog = nla_data(xdp[IFLA_XDP_LUA]);
+			generic_xdp_lua_install(lua_prog);
 		}
 	}
 
