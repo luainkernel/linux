@@ -68,10 +68,17 @@
  *				        - netif_rx() feedback
  */
 
-#include "lua.h"
-#include "lauxlib.h"
-#include "lualib.h"
-#include "luadata.h"
+#ifndef _LUNATIK_H
+#define _LUNATIK_H
+#include <lua.h>
+#include <lauxlib.h>
+#include <lualib.h>
+#endif
+
+#ifndef _LUADATA_H
+#define _LUADATA_H
+#include <luadata.h>
+#endif
 
 #include <linux/uaccess.h>
 #include <linux/bitops.h>
@@ -887,6 +894,8 @@ u32 lua_prog_run_xdp(struct xdp_buff *ctx, const char *func)
 	lua_State *L = NULL;
 	lua_state_cpu *sc;
 	int cpu;
+	int base;
+	int data_ref;
 	u32 ret = 0;
 
 	cpu = smp_processor_id();
@@ -900,16 +909,22 @@ u32 lua_prog_run_xdp(struct xdp_buff *ctx, const char *func)
 	if (!L)
 		goto out;
 
+	base = lua_gettop(L);
 	if (lua_getglobal(L, func) != LUA_TFUNCTION) {
-		printk(KERN_INFO "function %s not found\n", func);
+		printk(KERN_WARNING "function %s not found\n", func);
 		goto out;
 	}
 
-	ldata_newref(L, ctx->data, ctx->data_end - ctx->data);
-	lua_pcall(L, 1, 1, 0);
+	data_ref = ldata_newref(L, ctx->data, ctx->data_end - ctx->data);
+	if (lua_pcall(L, 1, 1, 0)) {
+		printk(KERN_WARNING "%s\n", lua_tostring(L, -1));
+		goto cleanup;
+	}
 	ret = lua_tointeger(L, -1);
-	lua_pop(L, 1);
 
+cleanup:
+	lua_settop(L, base);
+	ldata_unref(L, data_ref);
 out:
 	return ret;
 }
@@ -5233,7 +5248,11 @@ int generic_xdp_lua_install(char *lua_prog) {
 	lua_state_cpu *sc;
 
 	list_for_each_entry(sc, &lua_state_cpu_list, list) {
-		luaL_dostring(sc->L, lua_prog);
+		if (luaL_dostring(sc->L, lua_prog)) {
+			printk(KERN_WARNING "error: %s\nOn cpu: %d\n",
+				lua_tostring(sc->L, -1), sc->cpu);
+			return -1;
+		}
 	}
 
 	return 0;
@@ -9914,6 +9933,7 @@ static int __init net_dev_init(void)
 		}
 
 		luaL_openlibs(new_state_cpu->L);
+		luaL_requiref(new_state_cpu->L, "data", luaopen_data, 1);
 		new_state_cpu->cpu = i;
 
 		list_add(&new_state_cpu->list, &lua_state_cpu_list);

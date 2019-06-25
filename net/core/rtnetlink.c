@@ -1795,11 +1795,11 @@ static const struct nla_policy ifla_port_policy[IFLA_PORT_MAX+1] = {
 };
 
 static const struct nla_policy ifla_xdp_policy[IFLA_XDP_MAX + 1] = {
-	[IFLA_XDP_LUA]		= { .type = NLA_STRING, .len = 1024 },
 	[IFLA_XDP_FD]		= { .type = NLA_S32 },
 	[IFLA_XDP_ATTACHED]	= { .type = NLA_U8 },
 	[IFLA_XDP_FLAGS]	= { .type = NLA_U32 },
 	[IFLA_XDP_PROG_ID]	= { .type = NLA_U32 },
+	[IFLA_XDP_LUA]		= { .type = NLA_STRING, .len = 4096 },
 };
 
 static const struct rtnl_link_ops *linkinfo_to_kind_ops(const struct nlattr *nla)
