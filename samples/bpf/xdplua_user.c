@@ -60,7 +60,7 @@ static int do_attach(int idx, int fd, const char *name, char *lua_prog)
 
 	err = bpf_set_link_xdp_lua(idx, lua_prog);
 	if (err < 0)
-		printf("ERROR: failed to attach lua script 2to %s\n", name);
+		printf("ERROR: failed to attach lua script to %s\n", name);
 
 	return err;
 }
