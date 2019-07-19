@@ -53,6 +53,8 @@ hostprogs-y += xdpsock
 hostprogs-y += xdp_fwd
 hostprogs-y += task_fd_query
 hostprogs-y += xdp_sample_pkts
+# CONFIG_XDP_LUA
+hostprogs-y += xdplua
 
 # Libbpf dependencies
 LIBBPF = $(TOOLS_PATH)/lib/bpf/libbpf.a
@@ -109,6 +111,8 @@ xdpsock-objs := xdpsock_user.o
 xdp_fwd-objs := xdp_fwd_user.o
 task_fd_query-objs := bpf_load.o task_fd_query_user.o $(TRACE_HELPERS)
 xdp_sample_pkts-objs := xdp_sample_pkts_user.o $(TRACE_HELPERS)
+# CONFIG_XDPLUA
+xdplua-objs := xdplua_user.o
 
 # Tell kbuild to always build the programs
 always := $(hostprogs-y)
