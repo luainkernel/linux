@@ -2824,7 +2824,11 @@ union bpf_attr {
 	FN(strtoul),			\
 	FN(sk_storage_get),		\
 	FN(sk_storage_delete),		\
-	FN(send_signal),
+	FN(send_signal),		\
+	FN(lua_pushstring),		\
+	FN(lua_pushmap),		\
+	FN(lua_pcall),			\
+	FN(set_lua_state),
 
 /* integer value in 'imm' field of BPF_CALL instruction selects which helper
  * function eBPF program intends to call

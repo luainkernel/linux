@@ -228,6 +228,15 @@ static void *(*bpf_sk_storage_get)(void *map, struct bpf_sock *sk,
 static int (*bpf_sk_storage_delete)(void *map, struct bpf_sock *sk) =
 	(void *)BPF_FUNC_sk_storage_delete;
 static int (*bpf_send_signal)(unsigned sig) = (void *)BPF_FUNC_send_signal;
+static void (*bpf_lua_pushstring)(void *ctx, const char *) =
+    (void *)BPF_FUNC_lua_pushstring;
+static void (*bpf_lua_pushmap)(void *ctx, void *map) =
+    (void *)BPF_FUNC_lua_pushmap;
+static void (*bpf_lua_pcall)(void *ctx, char *funcname, int num_args,
+				   int num_rets) =
+    (void *) BPF_FUNC_lua_pcall;
+static void (*bpf_set_lua_state)(void *ctx) =
+    (void *)BPF_FUNC_set_lua_state;
 
 /* llvm builtin functions that eBPF C program may use to
  * emit BPF_LD_ABS and BPF_LD_IND instructions

@@ -74,6 +74,8 @@
 #include <net/ipv6_stubs.h>
 #include <net/bpf_sk_storage.h>
 
+#include <lua.h>
+
 /**
  *	sk_filter_trim_cap - run a packet through a socket filter
  *	@sk: sock associated with &sk_buff
@@ -5852,6 +5854,85 @@ static const struct bpf_func_proto bpf_tcp_check_syncookie_proto = {
 
 #endif /* CONFIG_INET */
 
+BPF_CALL_2(bpf_lua_pushstring, struct xdp_buff *, ctx, const char *, str) {
+	lua_pushstring(ctx->L, str);
+	return 0;
+}
+
+static const struct bpf_func_proto bpf_lua_pushstring_proto = {
+	.func		= bpf_lua_pushstring,
+	.gpl_only	= false,
+	.pkt_access	= false,
+	.ret_type	= RET_VOID,
+	.arg1_type	= ARG_PTR_TO_CTX,
+	.arg2_type	= ARG_ANYTHING,
+};
+
+BPF_CALL_2(bpf_lua_pushmap, struct xdp_buff *, ctx, struct bpf_map *, map) {
+	lua_pushlightuserdata(ctx->L, map);
+	return 0;
+}
+
+static const struct bpf_func_proto bpf_lua_pushmap_proto = {
+	.func		= bpf_lua_pushmap,
+	.gpl_only	= false,
+	.pkt_access	= false,
+	.ret_type	= RET_VOID,
+	.arg1_type	= ARG_PTR_TO_CTX,
+	.arg2_type	= ARG_ANYTHING,
+};
+
+BPF_CALL_4(bpf_lua_pcall, struct xdp_buff *, ctx, char *, funcname,
+			int, num_args, int, num_rets) {
+	if (lua_getglobal(ctx->L, funcname) != LUA_TFUNCTION) {
+		pr_err("function %s not found\n", funcname);
+		lua_pop(ctx->L, num_args);
+		return 0;
+	}
+
+	lua_insert(ctx->L, 1);
+	if (lua_pcall(ctx->L, num_args, num_rets, 0)) {
+		pr_err("%s\n", lua_tostring(ctx->L, -1));
+		lua_pop(ctx->L, 1);
+		return 0;
+	}
+	return num_rets;
+}
+
+static const struct bpf_func_proto bpf_lua_pcall_proto = {
+	.func		= bpf_lua_pcall,
+	.gpl_only	= false,
+	.pkt_access	= false,
+	.ret_type	= RET_INTEGER,
+	.arg1_type	= ARG_PTR_TO_CTX,
+	.arg2_type	= ARG_ANYTHING,
+	.arg3_type	= RET_INTEGER,
+	.arg4_type	= RET_INTEGER,
+};
+
+BPF_CALL_1(bpf_set_lua_state, struct xdp_buff *, ctx){
+	struct lua_state_cpu *sc;
+	int cpu;
+
+	cpu = smp_processor_id();
+	list_for_each_entry(sc, &lua_state_cpu_list, list) {
+		if (sc->cpu == cpu) {
+			ctx->L = sc->L;
+			break;
+		}
+	}
+
+	return 0;
+}
+
+static const struct bpf_func_proto bpf_set_lua_state_proto = {
+	.func		= bpf_set_lua_state,
+	.gpl_only	= false,
+	.pkt_access	= false,
+	.ret_type	= RET_VOID,
+	.arg1_type	= ARG_PTR_TO_CTX,
+};
+
 bool bpf_helper_changes_pkt_data(void *func)
 {
 	if (func == bpf_skb_vlan_push ||
@@ -5926,6 +6007,14 @@ bpf_base_func_proto(enum bpf_func_id func_id)
 		return &bpf_spin_unlock_proto;
 	case BPF_FUNC_trace_printk:
 		return bpf_get_trace_printk_proto();
+	case BPF_FUNC_lua_pushstring:
+		return &bpf_lua_pushstring_proto;
+	case BPF_FUNC_lua_pushmap:
+		return &bpf_lua_pushmap_proto;
+	case BPF_FUNC_lua_pcall:
+		return &bpf_lua_pcall_proto;
+	case BPF_FUNC_set_lua_state:
+		return &bpf_set_lua_state_proto;
 	default:
 		return NULL;
 	}
