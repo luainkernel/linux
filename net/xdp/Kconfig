@@ -5,3 +5,10 @@ config XDP_SOCKETS
 	help
 	  XDP sockets allows a channel between XDP programs and
 	  userspace applications.
+
+config XDP_LUA
+	bool "XDP LUA"
+	depends on BPF_SYSCALL && LUNATIK
+	default n
+	help
+	  Support for Lua scripts inside XDP
