@@ -2824,7 +2824,19 @@ union bpf_attr {
 	FN(strtoul),			\
 	FN(sk_storage_get),		\
 	FN(sk_storage_delete),		\
-	FN(send_signal),
+	/* #ifdef CONFIG_XDPLUA */	\
+	FN(lua_pcall),			\
+	FN(lua_pop),			\
+	FN(lua_pushinteger),		\
+	FN(lua_pushlightuserdata),	\
+	FN(lua_pushlstring),		\
+	FN(lua_pushmap),		\
+	FN(lua_pushskb),		\
+	FN(lua_pushstring),		\
+	FN(lua_setstate),		\
+	FN(lua_toboolean),		\
+	FN(lua_tointeger),
+	/* #endif CONFIG_XDPLUA */
 
 /* integer value in 'imm' field of BPF_CALL instruction selects which helper
  * function eBPF program intends to call
