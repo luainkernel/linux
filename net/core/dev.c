@@ -4425,9 +4425,10 @@ static u32 netif_receive_generic_xdp(struct sk_buff *skb,
 	rxqueue = netif_get_rxqueue(skb);
 	xdp->rxq = &rxqueue->xdp_rxq;
 
-	if (xdp_prog) {
+	if (xdp_prog)
 		act = bpf_prog_run_xdp(xdp_prog, xdp);
-	} else {
+
+	if (act == XDP_PASS || !xdp_prog) {
 		cpu = smp_processor_id();
 		list_for_each_entry(sc, &lua_state_cpu_list, list) {
 			if (sc->cpu == cpu) {

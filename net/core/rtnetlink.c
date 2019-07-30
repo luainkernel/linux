@@ -1799,7 +1799,7 @@ static const struct nla_policy ifla_xdp_policy[IFLA_XDP_MAX + 1] = {
 	[IFLA_XDP_ATTACHED]	= { .type = NLA_U8 },
 	[IFLA_XDP_FLAGS]	= { .type = NLA_U32 },
 	[IFLA_XDP_PROG_ID]	= { .type = NLA_U32 },
-	[IFLA_XDP_LUA_PROG]	= { .type = NLA_STRING, .len = 4096 },
+	[IFLA_XDP_LUA_PROG]	= { .type = NLA_STRING, .len = 8192 },
 	[IFLA_XDP_LUA_FUNC]	= { .type = NLA_STRING, .len = 256  },
 };
 
