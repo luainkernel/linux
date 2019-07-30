@@ -9949,7 +9949,7 @@ static int __init net_dev_init(void)
 		sd->backlog.weight = weight_p;
 
 		new_state_cpu = (lua_state_cpu *) kmalloc(sizeof(lua_state_cpu),
-							  GFP_KERNEL);
+							  GFP_ATOMIC);
 		if (!new_state_cpu)
 			continue;
 
