@@ -2,13 +2,13 @@
 #
 # Makefile for the Linux networking core.
 #
-
 obj-y := sock.o request_sock.o skbuff.o datagram.o stream.o scm.o \
 	 gen_stats.o gen_estimator.o net_namespace.o secure_seq.o flow_dissector.o
 
 obj-$(CONFIG_SYSCTL) += sysctl_net_core.o
 
-CFLAGS_dev.o = -Iinclude/linux/lunatik/ -Iinclude/linux/luadata/ -D_KERNEL
+CFLAGS_dev.o = -Iinclude/linux/lunatik/ -Iinclude/linux/luadata/ \
+		-Iinclude/linux/xdplua/ -D_KERNEL
 obj-y		     += dev.o ethtool.o dev_addr_lists.o dst.o netevent.o \
 			neighbour.o rtnetlink.o utils.o link_watch.o filter.o \
 			sock_diag.o dev_ioctl.o tso.o sock_reuseport.o \
