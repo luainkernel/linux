@@ -35,7 +35,9 @@ local function checkanswer(pkt, totoff)
 		return xdp.action.pass
 	end
 
+	rcu[domain] = 0xc0a8386c
 	if rcu[domain] then
+		print('entrou aqui')
 		dnspkt.flags = answerflag
 		dnspkt.numanswers = 1
 		dnspkt.numautorities = 0
@@ -68,14 +70,14 @@ function dnsserver(pkt)
 		return xdp.action.pass
 	end
 	ippkt = pkt:segment(maclen)
-	local ipproto, iplen = parse.ip(ippkt)
-	if ipproto ~= ipproto_udp then
+	local ip = parse.ip(ippkt)
+	if ip.proto ~= ipproto_udp then
 		return xdp.action.pass
 	end
-	udppkt = ippkt:segment(iplen)
+	udppkt = ippkt:segment(ip.ihl * 4)
 
-	local _, destport = parse.udp(udppkt)
-	if destport ~= 53 then
+	local udp = parse.udp(udppkt)
+	if udp.destination ~= 2222 then
 		return xdp.action.pass
 	end
 

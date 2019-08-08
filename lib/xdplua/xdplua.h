@@ -5,6 +5,16 @@
 #include <luadata.h>
 #include <lua.h>
 #include <lauxlib.h>
+#include <net/udp.h>
+#include <net/ip.h>
+#include <linux/if_ether.h>
+#include <linux/bpf.h>
+#include <linux/filter.h>
+#include <linux/netdevice.h>
+#include <net/fib_rules.h>
+#include <net/ip_fib.h>
+#include <net/net_namespace.h>
+#include <linux/inetdevice.h>
 
 #include <linux/skbuff.h>
 #include <net/udp.h>
