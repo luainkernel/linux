@@ -68,16 +68,11 @@ function dnsserver(pkt)
 		return xdp.action.pass
 	end
 	ippkt = pkt:segment(maclen)
-	local ipproto, iplen = parse.ip(ippkt)
-	if ipproto ~= ipproto_udp then
+	local ip = parse.ip(ippkt)
+	if ip.proto ~= ipproto_udp then
 		return xdp.action.pass
 	end
-	udppkt = ippkt:segment(iplen)
-
-	local _, destport = parse.udp(udppkt)
-	if destport ~= 53 then
-		return xdp.action.pass
-	end
+	udppkt = ippkt:segment(ip.ihl * 4)
 
 	local dnspkt = udppkt:segment(udplen)
 	return checkanswer(dnspkt, maclen + iplen + udplen)

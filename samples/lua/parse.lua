@@ -9,16 +9,17 @@ function parse.mac(pkt)
 end
 
 function parse.ip(pkt)
-	local layout = data.layout{ihl = { 4, 4 }, proto = { 72, 8 }}
+	local layout = data.layout{ihl = { 4, 4 }, proto = { 72, 8 },
+			saddr = {12 * 8, 4 * 8}, daddr = {16 * 8, 4 * 8}}
 	local ipdata = pkt:layout(layout)
-	return ipdata.proto, ipdata.ihl * 4
+	return ipdata
 end
 
 function parse.udp(pkt)
 	local layout = data.layout{source = { 0, 2 * 8, 'net' },
 				destination = { 2 * 8, 2 * 8, 'net' }}
 	local udpdata = pkt:layout(layout)
-	return udpdata.source, udpdata.destination
+	return udpdata
 end
 
 function parse.dnsquery(pkt)

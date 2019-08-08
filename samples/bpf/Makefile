@@ -55,6 +55,7 @@ hostprogs-y += xdp_sample_pkts
 hostprogs-y += ibumad
 hostprogs-y += hbm
 hostprogs-y += xdplua
+hostprogs-y += xdpluatables
 
 # Libbpf dependencies
 LIBBPF = $(TOOLS_PATH)/lib/bpf/libbpf.a
