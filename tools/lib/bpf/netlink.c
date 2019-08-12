@@ -194,7 +194,7 @@ int bpf_set_link_xdp_lua(int ifindex, char *lua_prog)
 	struct {
 		struct nlmsghdr  nh;
 		struct ifinfomsg ifinfo;
-		char             attrbuf[4096];
+		char             attrbuf[8192];
 	} req;
 	__u32 nl_pid;
 
