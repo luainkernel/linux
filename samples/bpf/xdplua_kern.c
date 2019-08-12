@@ -5,7 +5,7 @@
 SEC("xdp1")
 int xdp_prog1(struct xdp_md *ctx)
 {
-	char funcname[] = "test2";
+	char funcname[] = "callback";
 
 	return bpf_lua_run(ctx, funcname);
 }
