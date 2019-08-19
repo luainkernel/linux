@@ -4,3 +4,6 @@
 [submodule "lib/lunatik"]
 	path = lib/lunatik
 	url = https://github.com/VictorNogueiraRio/lunatik.git
+[submodule "lib/xdplua"]
+	path = lib/xdplua
+	url = https://github.com/VictorNogueiraRio/xdplua.git
