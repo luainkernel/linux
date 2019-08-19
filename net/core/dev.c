@@ -83,6 +83,11 @@
 #include <luadata.h>
 #endif
 
+#ifndef _XDPLUA_H
+#define _XDPLUA_H
+#include <xdplua.h>
+#endif
+
 #include <linux/uaccess.h>
 #include <linux/bitops.h>
 #include <linux/capability.h>
@@ -892,7 +897,7 @@ struct net_device *dev_get_by_index(struct net *net, int ifindex)
 }
 EXPORT_SYMBOL(dev_get_by_index);
 
-u32 lua_prog_run_xdp(lua_State *L, char *lua_funcname, struct xdp_buff *xdp)
+u32 lua_prog_run_xdp(lua_State *L, char *lua_funcname, struct xdp_buff *xdp, struct sk_buff *skb)
 {
 	u32 ret = 0;
 	int base;
@@ -907,6 +912,7 @@ u32 lua_prog_run_xdp(lua_State *L, char *lua_funcname, struct xdp_buff *xdp)
 		goto out;
 	}
 
+	luaU_setregval(L, XDPLUA_SKBENTRY, skb);
 	data_ref = ldata_newref(L, xdp->data, xdp->data_end - xdp->data);
 	if (lua_pcall(L, 1, 1, 0)) {
 		pr_err("%s\n", lua_tostring(L, -1));
@@ -4448,7 +4454,7 @@ static u32 netif_receive_generic_xdp(struct sk_buff *skb,
 				break;
 			}
 		}
-		act = lua_prog_run_xdp(L, lua_funcname, xdp);
+		act = lua_prog_run_xdp(L, lua_funcname, xdp, skb);
 	}
 
 	off = xdp->data - orig_data;
