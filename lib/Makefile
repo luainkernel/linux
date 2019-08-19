@@ -229,7 +229,7 @@ $(foreach file, $(libfdt_files), \
 lib-$(CONFIG_LIBFDT) += $(libfdt_files)
 
 subdir-ccflags-y += -I$(srctree)/lib/luadata/ -I$(srctree)/include/linux/lunatik/ \
-			-D_KERNEL
+			-I$(srctree)/lib/luaunpack/ -D_KERNEL
 obj-$(CONFIG_LUNATIK) += lunatik/
 obj-$(CONFIG_LUADATA) += luadata/
 
