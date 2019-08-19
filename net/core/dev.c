@@ -79,11 +79,6 @@
 #include <lualib.h>
 #endif
 
-#ifndef _LUADATA_H
-#define _LUADATA_H
-#include <luadata.h>
-#endif
-
 #include <linux/uaccess.h>
 #include <linux/bitops.h>
 #include <linux/capability.h>
@@ -899,7 +894,6 @@ u32 lua_prog_run_xdp(struct xdp_buff *ctx, const char *func)
 	lua_state_cpu *sc;
 	int cpu;
 	int base;
-	int data_ref;
 	u32 ret = 0;
 
 	cpu = smp_processor_id();
@@ -919,7 +913,7 @@ u32 lua_prog_run_xdp(struct xdp_buff *ctx, const char *func)
 		goto out;
 	}
 
-	data_ref = ldata_newref(L, ctx->data, ctx->data_end - ctx->data);
+	lua_pushlightuserdata(L, ctx->data);
 	if (lua_pcall(L, 1, 1, 0)) {
 		printk(KERN_WARNING "%s\n", lua_tostring(L, -1));
 		goto cleanup;
@@ -928,7 +922,6 @@ u32 lua_prog_run_xdp(struct xdp_buff *ctx, const char *func)
 
 cleanup:
 	lua_settop(L, base);
-	ldata_unref(L, data_ref);
 out:
 	return ret;
 }
@@ -9946,7 +9939,6 @@ static int __init net_dev_init(void)
 		}
 
 		luaL_openlibs(new_state_cpu->L);
-		luaL_requiref(new_state_cpu->L, "data", luaopen_data, 1);
 		new_state_cpu->cpu = i;
 
 		list_add(&new_state_cpu->list, &lua_state_cpu_list);
