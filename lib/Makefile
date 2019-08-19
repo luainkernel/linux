@@ -228,10 +228,9 @@ $(foreach file, $(libfdt_files), \
 	$(eval CFLAGS_$(file) = -I $(srctree)/scripts/dtc/libfdt))
 lib-$(CONFIG_LIBFDT) += $(libfdt_files)
 
-subdir-ccflags-y += -I$(srctree)/lib/luadata/ -I$(srctree)/include/linux/lunatik/ \
-			-I$(srctree)/lib/luaunpack/ -D_KERNEL
+subdir-ccflags-y += -I$(srctree)/lib/luaunpack -I$(srctree)/include/linux/lunatik/ \
+			-D_KERNEL
 obj-$(CONFIG_LUNATIK) += lunatik/
-obj-$(CONFIG_LUADATA) += luadata/
 obj-$(CONFIG_LUAUNPACK) += luaunpack/
 
 obj-$(CONFIG_RBTREE_TEST) += rbtree_test.o
