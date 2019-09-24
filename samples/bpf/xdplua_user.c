@@ -7,19 +7,25 @@
 #include <libgen.h>
 #include <sys/resource.h>
 #include <net/if.h>
+#include "xdp_ssl_parser_common.h"
 
+#include <bpf/bpf.h>
 #include "bpf/libbpf.h"
+#include "libbpf.h"
 
-static int ifindex;
+#include "bpf_util.h"
+
+static int ifindex = 0;
 
 static void usage(const char *prog) {
-	fprintf(stderr,
-			"usage: %s [OPTS] IFACE\n"
-			"\nOPTS:\n"
-			"    -L LUAFILE     load lua script to XDP\n"
-			"    -d             detach program\n"
-			"    -F             func name\n",
-			prog);
+	fprintf(stderr, "usage: %s [OPTS]\n"
+		"\nOPTS:\n"
+		"    -d    detach program\n"
+		"    -s    lua script path\n"
+		"    -p    eBPF program path\n"
+		"    -i    iface\n"
+		"    -m    monitor\n",
+		prog);
 }
 
 static char *extract_lua_prog(const char *path)
@@ -30,7 +36,7 @@ static char *extract_lua_prog(const char *path)
 
 	f = fopen(path, "r");
 	if (f == NULL) {
-		perror("unable to open lua file");
+		perror("unable to xopen lua file");
 		return NULL;
 	}
 
@@ -39,72 +45,98 @@ static char *extract_lua_prog(const char *path)
 	rewind(f);
 
 	lua_prog = (char *) malloc(prog_size + 1);
+	memset(lua_prog, 0, prog_size + 1);
 	if (fread(lua_prog, 1, prog_size, f) < 0) {
 		perror("unable to read lua file");
 		return NULL;
 	}
 
 	lua_prog[prog_size] = '\0';
+	fclose(f);
 	return lua_prog;
 }
 
-static int do_attach_prog(int idx, char *lua_prog)
-{
-	int err = 0;
-
-	err = bpf_set_link_xdp_lua_prog(idx, lua_prog);
-	if (err < 0)
-		printf("ERROR: failed to attach lua script\n");
-
-	return err;
-}
-
-static int do_attach_func(int idx, char *lua_funcname)
-{
-	int err = 0;
-
-	err = bpf_set_link_xdp_lua_func(idx, lua_funcname);
-	if (err < 0)
-		printf("ERROR: failed to attach lua function\n");
-
-	return err;
-}
-
-static int do_detach(int idx)
+static int do_attach_ebpf(int idx, int fd, const char *name)
 {
 	int err;
 
-	err = bpf_set_link_xdp_lua_func(idx, NULL);
+	err = bpf_set_link_xdp_fd(idx, fd, XDP_FLAGS_SKB_MODE);
 	if (err < 0)
-		printf("ERROR: failed to detach program\n");
+		fprintf(stderr, "ERROR: failed to attach program to %s\n", name);
 
 	return err;
+}
+
+static int do_attach_lua(const char *name, char *lua_prog)
+{
+	int err;
+
+	err = bpf_set_link_xdp_lua_prog(lua_prog);
+	if (err < 0)
+		fprintf(stderr, "ERROR: failed to attach lua script to %s\n", name);
+
+	return err;
+}
+
+static int do_detach(int idx, const char *name)
+{
+	int err;
+
+	err = bpf_set_link_xdp_fd(idx, -1, XDP_FLAGS_SKB_MODE);
+	if (err < 0)
+		fprintf(stderr, "ERROR: failed to detach program from %s\n", name);
+
+	return err;
+}
+
+static void poll(int map_fd, int interval) {
+	long cnt;
+	unsigned int key = 0;
+
+	while(1) {
+		bpf_map_lookup_elem(map_fd, &key, &cnt);
+		printf("pkt count: %lu\n", cnt);
+		sleep(interval);
+	}
 }
 
 int main(int argc, char *argv[])
 {
 	struct rlimit r = {RLIM_INFINITY, RLIM_INFINITY};
-	const char *optstr = "F:L:d";
-	int opt;
 	char lua_filename[256];
-	char lua_funcname[256];
+	char filename[256];
+	struct bpf_object *obj;
+	int opt, prog_fd;
+	int rx_cnt_map_fd;
+	int detach = 0, attach_lua = 0, attach_ebpf = 0, monitor = 0;
 	char *lua_prog = NULL;
-	int attach = 1;
+	const char *optstr = "s:p:i:dm";
+	struct bpf_prog_load_attr prog_load_attr = {
+		.prog_type	= BPF_PROG_TYPE_XDP,
+	};
 
-	memset(lua_funcname, 0, 256);
 	memset(lua_filename, 0, 256);
+	memset(filename, 0, 256);
 	while ((opt = getopt(argc, argv, optstr)) != -1) {
 		switch (opt) {
-			case 'L':
+			case 's':
 				snprintf(lua_filename, sizeof(lua_filename),
 						"%s", optarg);
+				attach_lua = 1;
 				break;
-			case 'F':
-				snprintf(lua_funcname, sizeof(lua_funcname),
+			case 'p':
+				snprintf(filename, sizeof(filename),
 						"%s", optarg);
+				attach_ebpf = 1;
 				break;
 			case 'd':
-				attach = 0;
+				detach = 1;
+				break;
+			case 'i':
+				ifindex = if_nametoindex(optarg);
+				break;
+			case 'm':
+				monitor = 1;
 				break;
 			default:
 				usage(basename(argv[0]));
@@ -112,36 +144,58 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (optind == argc) {
-		usage(basename(argv[0]));
-		return 1;
+	if (attach_ebpf || detach) {
+		if (!ifindex) {
+			printf("ERROR: invalid interface name");
+			return 1;
+		}
 	}
 
 	if (setrlimit(RLIMIT_MEMLOCK, &r)) {
-		perror("setrlimit(RLIMIT_MEMLOCK)");
+		perror("ERROR: setrlimit(RLIMIT_MEMLOCK)");
 		return 1;
 	}
 
-	ifindex = if_nametoindex(argv[optind]);
-	if (!ifindex) {
-		perror("if_nametoindex");
-		return 1;
-	}
-
-	if (attach) {
-		if (strlen(lua_filename)) {
-			lua_prog = extract_lua_prog(lua_filename);
-			if (do_attach_prog(ifindex, lua_prog) < 0)
-				return 1;
-		}
-
-		if (strlen(lua_funcname)) {
-			if (do_attach_func(ifindex, lua_funcname) < 0)
-				return 1;
-		}
-	} else {
-		if (do_detach(ifindex) < 0)
+	if (detach) {
+		if (do_detach(ifindex, lua_filename) < 0)
 			return 1;
+
+		return 0;
+	}
+
+	if (attach_ebpf) {
+		prog_load_attr.file = filename;
+
+		if (bpf_prog_load_xattr(&prog_load_attr, &obj, &prog_fd))
+			return 1;
+
+		if (!prog_fd) {
+			printf("ERROR: failed to load_bpf_file\n");
+			return 1;
+		}
+
+		if (do_attach_ebpf(ifindex, prog_fd, lua_filename) < 0)
+			return 1;
+
+	}
+
+	if (attach_lua) {
+		lua_prog = extract_lua_prog(lua_filename);
+		if (!lua_prog)
+			return 1;
+
+		if (do_attach_lua(lua_filename, lua_prog) < 0) {
+			free(lua_prog);
+			return 1;
+		}
+
+		free(lua_prog);
+	}
+
+	if (monitor) {
+		rx_cnt_map_fd = bpf_object__find_map_fd_by_name(obj, "rx_cnt");
+
+		poll(rx_cnt_map_fd, 1);
 	}
 	return 0;
 }

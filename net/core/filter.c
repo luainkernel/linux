@@ -73,6 +73,7 @@
 #include <net/lwtunnel.h>
 #include <net/ipv6_stubs.h>
 #include <net/bpf_sk_storage.h>
+#include <lua.h>
 
 /**
  *	sk_filter_trim_cap - run a packet through a socket filter
@@ -3502,13 +3503,11 @@ xdp_do_redirect_slow(struct net_device *dev, struct xdp_buff *xdp,
 	if (unlikely(err))
 		goto err;
 
-	if (xdp_prog)
-		_trace_xdp_redirect(dev, xdp_prog, index);
+	_trace_xdp_redirect(dev, xdp_prog, index);
 
 	return 0;
 err:
-	if (xdp_prog)
-		_trace_xdp_redirect_err(dev, xdp_prog, index, err);
+	_trace_xdp_redirect_err(dev, xdp_prog, index, err);
 
 	return err;
 }
@@ -3624,13 +3623,11 @@ static int xdp_do_redirect_map(struct net_device *dev, struct xdp_buff *xdp,
 		goto err;
 
 	ri->map_to_flush = map;
-	if (xdp_prog)
-		_trace_xdp_redirect_map(dev, xdp_prog, fwd, map, index);
+	_trace_xdp_redirect_map(dev, xdp_prog, fwd, map, index);
 
 	return 0;
 err:
-	if (xdp_prog)
-		_trace_xdp_redirect_map_err(dev, xdp_prog, fwd, map, index, err);
+	_trace_xdp_redirect_map_err(dev, xdp_prog, fwd, map, index, err);
 	return err;
 }
 
@@ -3681,13 +3678,11 @@ static int xdp_do_generic_redirect_map(struct net_device *dev,
 		goto err;
 	}
 
-	if (xdp_prog)
-		_trace_xdp_redirect_map(dev, xdp_prog, fwd, map, index);
+	_trace_xdp_redirect_map(dev, xdp_prog, fwd, map, index);
 
 	return 0;
 err:
-	if (xdp_prog)
-		_trace_xdp_redirect_map_err(dev, xdp_prog, fwd, map, index, err);
+	_trace_xdp_redirect_map_err(dev, xdp_prog, fwd, map, index, err);
 
 	return err;
 }
@@ -3716,14 +3711,12 @@ int xdp_do_generic_redirect(struct net_device *dev, struct sk_buff *skb,
 		goto err;
 
 	skb->dev = fwd;
-	if (xdp_prog)
-		_trace_xdp_redirect(dev, xdp_prog, index);
+	_trace_xdp_redirect(dev, xdp_prog, index);
 
 	generic_xdp_tx(skb, xdp_prog);
 	return 0;
 err:
-	if (xdp_prog)
-		_trace_xdp_redirect_err(dev, xdp_prog, index, err);
+	_trace_xdp_redirect_err(dev, xdp_prog, index, err);
 
 	return err;
 }
@@ -5865,6 +5858,19 @@ static const struct bpf_func_proto bpf_tcp_check_syncookie_proto = {
 	.arg5_type	= ARG_CONST_SIZE,
 };
 
+BPF_CALL_2(bpf_lua_pushstring, struct xdp_buff *, ctx, const char *, str) {
+	lua_pushstring(ctx->L, str);
+}
+
+static const struct bpf_func_proto bpf_lua_pushstring_proto = {
+	.func		= bpf_lua_pushstring,
+	.gpl_only	= false,
+	.pkt_access	= false,
+	.ret_type	= RET_VOID,
+	.arg1_type	= ARG_PTR_TO_CTX,
+	.arg2_type	= ARG_ANYTHING,
+};
+
 #endif /* CONFIG_INET */
 
 bool bpf_helper_changes_pkt_data(void *func)
@@ -6190,6 +6196,8 @@ xdp_func_proto(enum bpf_func_id func_id, const struct bpf_prog *prog)
 	case BPF_FUNC_tcp_check_syncookie:
 		return &bpf_tcp_check_syncookie_proto;
 #endif
+	case BPF_FUNC_lua_pushstring:
+		return &bpf_lua_pushstring_proto;
 	default:
 		return bpf_base_func_proto(func_id);
 	}
