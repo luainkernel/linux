@@ -161,20 +161,12 @@
 /* This should be increased if a protocol with a bigger head is added. */
 #define GRO_MAX_HEAD (MAX_HEADER + 128)
 
-struct lua_state_cpu {
-	lua_State 		*L;
-	int			cpu;
-	struct list_head	list;
-};
-
-typedef struct lua_state_cpu lua_state_cpu;
-
 static DEFINE_SPINLOCK(ptype_lock);
 static DEFINE_SPINLOCK(offload_lock);
 struct list_head ptype_base[PTYPE_HASH_SIZE] __read_mostly;
 struct list_head ptype_all __read_mostly;	/* Taps */
 static struct list_head offload_base __read_mostly;
-static struct list_head lua_state_cpu_list;
+struct list_head lua_state_cpu_list;
 
 static int netif_rx_internal(struct sk_buff *skb);
 static int call_netdevice_notifiers_info(unsigned long val,
@@ -4345,9 +4337,8 @@ static u32 netif_receive_generic_xdp(struct sk_buff *skb,
 	__be16 orig_eth_type;
 	struct ethhdr *eth;
 	bool orig_bcast;
-	int hlen, off, cpu;
+	int hlen, off;
 	u32 mac_len;
-	lua_state_cpu *sc;
 
 	/* Reinjected packets coming from act_mirred or similar should
 	 * not get XDP generic processing.
@@ -4392,14 +4383,6 @@ static u32 netif_receive_generic_xdp(struct sk_buff *skb,
 
 	rxqueue = netif_get_rxqueue(skb);
 	xdp->rxq = &rxqueue->xdp_rxq;
-
-	cpu = smp_processor_id();
-	list_for_each_entry(sc, &lua_state_cpu_list, list) {
-		if (sc->cpu == cpu) {
-			xdp->L = sc->L;
-			break;
-		}
-	}
 
 	act = bpf_prog_run_xdp(xdp_prog, xdp);
 
@@ -5216,7 +5199,7 @@ static int generic_xdp_install(struct net_device *dev, struct netdev_bpf *xdp)
 
 int generic_xdp_lua_install_prog(char *lua_prog)
 {
-	lua_state_cpu *sc;
+	struct lua_state_cpu *sc;
 
 	list_for_each_entry(sc, &lua_state_cpu_list, list) {
 		if (luaL_dostring(sc->L, lua_prog)) {
@@ -9845,7 +9828,7 @@ static struct pernet_operations __net_initdata default_device_ops = {
 static int __init net_dev_init(void)
 {
 	int i, rc = -ENOMEM;
-	lua_state_cpu *new_state_cpu;
+	struct lua_state_cpu *new_state_cpu;
 
 	BUG_ON(!dev_boot_phase);
 
@@ -9892,7 +9875,7 @@ static int __init net_dev_init(void)
 		sd->backlog.poll = process_backlog;
 		sd->backlog.weight = weight_p;
 
-		new_state_cpu = (lua_state_cpu *) kmalloc(sizeof(lua_state_cpu),
+		new_state_cpu = (struct lua_state_cpu *) kmalloc(sizeof(struct lua_state_cpu),
 							  GFP_ATOMIC);
 		if (!new_state_cpu)
 			continue;
