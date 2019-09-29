@@ -2828,7 +2828,13 @@ union bpf_attr {
 	FN(lua_pushstring),		\
 	FN(lua_pushmap),		\
 	FN(lua_pcall),			\
-	FN(set_lua_state),
+	FN(set_lua_state),		\
+	FN(lua_data_newref),		\
+	FN(lua_data_unref),		\
+	FN(lua_toboolean),		\
+	FN(lua_pop),			\
+	FN(lua_pushlightuserdata),	\
+	FN(lua_pushskb),
 
 /* integer value in 'imm' field of BPF_CALL instruction selects which helper
  * function eBPF program intends to call

@@ -4378,6 +4378,7 @@ static u32 netif_receive_generic_xdp(struct sk_buff *skb,
 
 	rxqueue = netif_get_rxqueue(skb);
 	xdp->rxq = &rxqueue->xdp_rxq;
+	xdp->skb = skb;
 
 	act = bpf_prog_run_xdp(xdp_prog, xdp);
 
