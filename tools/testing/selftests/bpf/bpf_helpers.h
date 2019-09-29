@@ -237,6 +237,18 @@ static void (*bpf_lua_pcall)(void *ctx, char *funcname, int num_args,
     (void *) BPF_FUNC_lua_pcall;
 static void (*bpf_set_lua_state)(void *ctx) =
     (void *)BPF_FUNC_set_lua_state;
+static int (*bpf_lua_data_newref)(void *ctx, int offset) =
+    (void *)BPF_FUNC_lua_data_newref;
+static void (*bpf_lua_data_unref)(void *ctx, int data_ref) =
+    (void *)BPF_FUNC_lua_data_unref;
+static int (*bpf_lua_toboolean)(void *ctx, int index) =
+    (void *)BPF_FUNC_lua_toboolean;
+static void (*bpf_lua_pop)(void *ctx, int index) =
+    (void *)BPF_FUNC_lua_pop;
+static void (*bpf_lua_pushlightuserdata)(void *ctx, void *ptr) =
+    (void *)BPF_FUNC_lua_pushlightuserdata;
+static void (*bpf_lua_pushskb)(void *ctx) =
+    (void *)BPF_FUNC_lua_pushskb;
 
 /* llvm builtin functions that eBPF C program may use to
  * emit BPF_LD_ABS and BPF_LD_IND instructions
