@@ -230,8 +230,13 @@ static int (*bpf_sk_storage_delete)(void *map, struct bpf_sock *sk) =
 static int (*bpf_send_signal)(unsigned sig) = (void *)BPF_FUNC_send_signal;
 static void (*bpf_lua_pushstring)(void *ctx, const char *) =
     (void *)BPF_FUNC_lua_pushstring;
+static void (*bpf_lua_pushlstring)(void *ctx, const char *,
+				   size_t len) =
+    (void *)BPF_FUNC_lua_pushlstring;
 static void (*bpf_lua_pushmap)(void *ctx, void *map) =
     (void *)BPF_FUNC_lua_pushmap;
+static void (*bpf_lua_pushinteger)(void *ctx, int num) =
+    (void *)BPF_FUNC_lua_pushinteger;
 static void (*bpf_lua_pcall)(void *ctx, char *funcname, int num_args,
 				   int num_rets) =
     (void *) BPF_FUNC_lua_pcall;
@@ -243,6 +248,8 @@ static void (*bpf_lua_data_unref)(void *ctx, int data_ref) =
     (void *)BPF_FUNC_lua_data_unref;
 static int (*bpf_lua_toboolean)(void *ctx, int index) =
     (void *)BPF_FUNC_lua_toboolean;
+static int (*bpf_lua_tointeger)(void *ctx, int index) =
+    (void *)BPF_FUNC_lua_tointeger;
 static void (*bpf_lua_pop)(void *ctx, int index) =
     (void *)BPF_FUNC_lua_pop;
 static void (*bpf_lua_pushlightuserdata)(void *ctx, void *ptr) =
