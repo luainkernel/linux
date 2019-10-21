@@ -7,3 +7,6 @@
 [submodule "lib/xdplua"]
 	path = lib/xdplua
 	url = https://github.com/VictorNogueiraRio/xdplua.git
+[submodule "lib/luaunpack"]
+	path = lib/luaunpack
+	url = https://github.com/VictorNogueiraRio/luaunpack.git

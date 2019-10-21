@@ -79,6 +79,11 @@
 #include <luadata.h>
 #endif
 
+#ifndef _XDPLUA_H
+#define _XDPLUA_H
+#include <xdplua.h>
+#endif
+
 #include <linux/uaccess.h>
 #include <linux/bitops.h>
 #include <linux/capability.h>
