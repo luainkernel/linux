@@ -175,6 +175,7 @@ always += hbm_edt_kern.o
 always += xdp_ssl_parser_kern.o
 always += xdp_dns_parser_kern.o
 always += xdp_dns_cache_kern.o
+always += xdp_dos_http_kern.o
 
 KBUILD_HOSTCFLAGS += -I$(objtree)/usr/include
 KBUILD_HOSTCFLAGS += -I$(srctree)/tools/lib/bpf/
