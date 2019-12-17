@@ -7,7 +7,6 @@
 #include <libgen.h>
 #include <sys/resource.h>
 #include <net/if.h>
-#include "xdp_ssl_parser_common.h"
 
 #include <bpf/bpf.h>
 #include "bpf/libbpf.h"
