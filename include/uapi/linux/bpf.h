@@ -2826,12 +2826,13 @@ union bpf_attr {
 	FN(sk_storage_delete),		\
 	FN(send_signal),		\
 	FN(lua_pushstring),		\
-	FN(lua_pushlstring),		\
+	FN(lua_pushlstring),	\
 	FN(lua_pushmap),		\
-	FN(lua_pushinteger),		\
+	FN(lua_pushinteger),	\
 	FN(lua_pcall),			\
 	FN(set_lua_state),		\
-	FN(lua_data_newref),		\
+	FN(unset_lua_state),	\
+	FN(lua_data_newref),	\
 	FN(lua_data_unref),		\
 	FN(lua_toboolean),		\
 	FN(lua_tointeger),		\

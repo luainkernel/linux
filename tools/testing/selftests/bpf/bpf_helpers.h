@@ -242,6 +242,8 @@ static void (*bpf_lua_pcall)(void *ctx, char *funcname, int num_args,
     (void *) BPF_FUNC_lua_pcall;
 static void (*bpf_set_lua_state)(void *ctx) =
     (void *)BPF_FUNC_set_lua_state;
+static void (*bpf_unset_lua_state)(void *ctx) =
+    (void *)BPF_FUNC_unset_lua_state;
 static int (*bpf_lua_data_newref)(void *ctx, int offset) =
     (void *)BPF_FUNC_lua_data_newref;
 static void (*bpf_lua_data_unref)(void *ctx, int data_ref) =

@@ -168,10 +168,11 @@
 
 static DEFINE_SPINLOCK(ptype_lock);
 static DEFINE_SPINLOCK(offload_lock);
+static DEFINE_PER_CPU(spinlock_t, lua_state_lock);
 struct list_head ptype_base[PTYPE_HASH_SIZE] __read_mostly;
 struct list_head ptype_all __read_mostly;	/* Taps */
 static struct list_head offload_base __read_mostly;
-struct list_head lua_state_cpu_list;
+
 
 static int netif_rx_internal(struct sk_buff *skb);
 static int call_netdevice_notifiers_info(unsigned long val,
@@ -5203,16 +5204,24 @@ static int generic_xdp_install(struct net_device *dev, struct netdev_bpf *xdp)
 	return ret;
 }
 
+DEFINE_PER_CPU(struct lua_state_cpu, lua_states_per_cpu);
+
 int generic_xdp_lua_install_prog(char *lua_prog)
 {
 	struct lua_state_cpu *sc;
+	int i;
 
-	list_for_each_entry(sc, &lua_state_cpu_list, list) {
+	for_each_possible_cpu(i) {
+		sc = per_cpu_ptr(&lua_states_per_cpu, i);
+		spin_lock_bh(sc->lock);
 		if (luaL_dostring(sc->L, lua_prog)) {
 			pr_err(KERN_INFO "error: %s\nOn cpu: %d\n",
-				lua_tostring(sc->L, -1), sc->cpu);
+				lua_tostring(sc->L, -1), i);
+			spin_unlock_bh(sc->lock);
 			return -EINVAL;
 		}
+
+		spin_unlock_bh(sc->lock);
 	}
 	return 0;
 }
@@ -9834,7 +9843,6 @@ static struct pernet_operations __net_initdata default_device_ops = {
 static int __init net_dev_init(void)
 {
 	int i, rc = -ENOMEM;
-	struct lua_state_cpu *new_state_cpu;
 
 	BUG_ON(!dev_boot_phase);
 
@@ -9849,7 +9857,6 @@ static int __init net_dev_init(void)
 		INIT_LIST_HEAD(&ptype_base[i]);
 
 	INIT_LIST_HEAD(&offload_base);
-	INIT_LIST_HEAD(&lua_state_cpu_list);
 
 	if (register_pernet_subsys(&netdev_net_ops))
 		goto out;
@@ -9861,6 +9868,7 @@ static int __init net_dev_init(void)
 	for_each_possible_cpu(i) {
 		struct work_struct *flush = per_cpu_ptr(&flush_works, i);
 		struct softnet_data *sd = &per_cpu(softnet_data, i);
+		struct lua_state_cpu *lstatecpu = per_cpu_ptr(&lua_states_per_cpu, i);
 
 		INIT_WORK(flush, flush_backlog);
 
@@ -9881,23 +9889,16 @@ static int __init net_dev_init(void)
 		sd->backlog.poll = process_backlog;
 		sd->backlog.weight = weight_p;
 
-		new_state_cpu = (struct lua_state_cpu *) kmalloc(sizeof(struct lua_state_cpu),
-							  GFP_ATOMIC);
-		if (!new_state_cpu)
-			continue;
-
-		new_state_cpu->L = luaL_newstate();
-		if  (!new_state_cpu->L) {
-			kfree(new_state_cpu);
+		lstatecpu->L = luaL_newstate();
+		if  (!lstatecpu->L) {
+			kfree(lstatecpu);
 			continue;
 		}
 
-		luaL_openlibs(new_state_cpu->L);
-		luaL_requiref(new_state_cpu->L, "data", luaopen_data, 1);
-		lua_pop(new_state_cpu->L, 1);
-		new_state_cpu->cpu = i;
-
-		list_add(&new_state_cpu->list, &lua_state_cpu_list);
+		luaL_openlibs(lstatecpu->L);
+		luaL_requiref(lstatecpu->L, "data", luaopen_data, 1);
+		lua_pop(lstatecpu->L, 1);
+		lstatecpu->lock = per_cpu_ptr(&lua_state_lock, i);
 	}
 
 	dev_boot_phase = 0;
