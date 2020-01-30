@@ -2228,6 +2228,8 @@ union bpf_attr {
 	FN(sk_select_reuseport),	\
 	FN(skb_ancestor_cgroup_id),	\
 	/* #ifdef CONFIG_XDP_LUA */	\
+	FN(lua_dataref),		\
+	FN(lua_dataunref),		\
 	FN(lua_pcall),			\
 	FN(lua_pop),			\
 	FN(lua_pushinteger),		\
