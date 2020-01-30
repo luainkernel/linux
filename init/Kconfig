@@ -1307,6 +1307,12 @@ config HAVE_PCSPKR_PLATFORM
 config BPF
 	bool
 
+config LUNATIK
+	bool "Lunatik"
+	default n
+	help
+	  Support for the Lua interpreter
+
 menuconfig EXPERT
 	bool "Configure standard kernel features (expert users)"
 	# Unhide debug options, to make the on-by-default options visible

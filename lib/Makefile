@@ -300,3 +300,6 @@ obj-$(CONFIG_OBJAGG) += objagg.o
 
 # KUnit tests
 obj-$(CONFIG_LIST_KUNIT_TEST) += list-test.o
+subdir-ccflags-y += -I$(srctree)/lib/lunatik/lua \
+	            -D_KERNEL
+obj-$(CONFIG_LUNATIK) += lunatik/
