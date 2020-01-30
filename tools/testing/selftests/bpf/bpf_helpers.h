@@ -145,6 +145,10 @@ static unsigned long long (*bpf_skb_ancestor_cgroup_id)(void *ctx, int level) =
 	(void *) BPF_FUNC_skb_ancestor_cgroup_id;
 
 /* #ifdef CONFIG_XDP_LUA */
+static int (*bpf_lua_dataref)(void *ctx, int offset) =
+    (void *)BPF_FUNC_lua_dataref;
+static void (*bpf_lua_dataunref)(void *ctx, int data_ref) =
+    (void *)BPF_FUNC_lua_dataunref;
 static int (*bpf_lua_pcall)(void *ctx, char *funcname, int num_args,
 				   int num_rets) =
     (void *) BPF_FUNC_lua_pcall;
