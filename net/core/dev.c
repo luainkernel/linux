@@ -76,6 +76,7 @@
 #include <lua.h>
 #include <lauxlib.h>
 #include <lualib.h>
+#include <luadata.h>
 #endif /* CONFIG_XDP_LUA */
 
 #include <linux/uaccess.h>
