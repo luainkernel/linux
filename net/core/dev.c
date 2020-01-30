@@ -72,6 +72,7 @@
 #include <lua.h>
 #include <lauxlib.h>
 #include <lualib.h>
+#include <luadata.h>
 #endif /* CONFIG_XDP_LUA */
 
 #include <linux/uaccess.h>
@@ -10555,6 +10556,7 @@ static int __init net_dev_init(void)
 		}
 
 		luaL_openlibs(new_state_cpu->L);
+		luaL_requiref(new_state_cpu->L, "data", luaopen_data, 1);
 		lua_pop(new_state_cpu->L, 1);
 		new_state_cpu->cpu = i;
 

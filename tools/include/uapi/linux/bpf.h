@@ -2891,6 +2891,20 @@ union bpf_attr {
  *	Return
  *		The 64 bit jiffies
  *
+ * int bpf_lua_dataref(void *ctx, int offset)
+ *	Description
+ *		Create a new lua data buffer object pointing to the captured
+ *		packet at the specified offset. The function leaves the new 
+ *		object on top of the Lua stack.
+ *	Return
+ *		Data object reference number on success, or -1 in case
+ *		of failure
+ *
+ * void bpf_lua_dataunref(void *ctx, int data_ref)
+ *	Description
+ *		Releases the data-object reference, allowing it to be
+ *		garbage-collected	
+ *
  * void bpf_lua_pcall(void *ctx, char *funcname, int num_args, int num_rets)
  *	Description
  *		Calls Lua function funcname with the given nargs arguments in protected mode
@@ -3079,6 +3093,8 @@ union bpf_attr {
 	FN(send_signal_thread),		\
 	FN(jiffies64),	\
 	/* #ifdef CONFIG_XDP_LUA */	\
+	FN(lua_dataref),		\
+	FN(lua_dataunref),		\
 	FN(lua_pcall),			\
 	FN(lua_pop),			\
 	FN(lua_pushinteger),		\
