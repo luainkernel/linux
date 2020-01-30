@@ -1,0 +1,3 @@
+[submodule "lib/lunatik"]
+	path = lib/lunatik
+	url = https://github.com/luainkernel/lunatik.git
