@@ -296,5 +296,7 @@ obj-$(CONFIG_GENERIC_LIB_UCMPDI2) += ucmpdi2.o
 obj-$(CONFIG_OBJAGG) += objagg.o
 
 subdir-ccflags-y += -I$(srctree)/lib/lunatik/lua \
+	            -I$(srctree)/lib/luadata/ \
 	            -D_KERNEL
 obj-$(CONFIG_LUNATIK) += lunatik/
+obj-$(CONFIG_LUADATA) += luadata/

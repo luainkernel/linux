@@ -230,6 +230,10 @@ static int (*bpf_sk_storage_delete)(void *map, struct bpf_sock *sk) =
 static int (*bpf_send_signal)(unsigned sig) = (void *)BPF_FUNC_send_signal;
 
 /* #fidef CONFIG_XDPLUA */
+static int (*bpf_lua_dataref)(void *ctx, int offset) =
+    (void *)BPF_FUNC_lua_dataref;
+static void (*bpf_lua_dataunref)(void *ctx, int data_ref) =
+    (void *)BPF_FUNC_lua_dataunref;
 static void (*bpf_lua_pcall)(void *ctx, char *funcname, int num_args,
 				   int num_rets) =
     (void *) BPF_FUNC_lua_pcall;

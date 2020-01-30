@@ -2826,6 +2826,8 @@ union bpf_attr {
 	FN(sk_storage_delete),		\
 	FN(send_signal),		\
 	/* #ifdef CONFIG_XDPLUA */	\
+	FN(lua_dataref),		\
+	FN(lua_dataunref),		\
 	FN(lua_pcall),			\
 	FN(lua_pop),			\
 	FN(lua_pushinteger),		\
