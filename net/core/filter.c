@@ -4797,6 +4797,41 @@ static const struct bpf_func_proto bpf_lwt_seg6_adjust_srh_proto = {
 #endif /* CONFIG_IPV6_SEG6_BPF */
 
 #ifdef CONFIG_XDP_LUA
+BPF_CALL_2(bpf_lua_dataref, struct xdp_buff *, ctx, int, offset) {
+	if (offset + ctx->data < ctx->data_end) {
+		int data_ref;
+
+		data_ref = ldata_newref(ctx->L, ctx->data + offset,
+				ctx->data_end - ctx->data - offset);
+		return data_ref;
+	}
+
+	return -1;
+}
+
+static const struct bpf_func_proto bpf_lua_dataref_proto = {
+	.func		= bpf_lua_dataref,
+	.gpl_only	= false,
+	.pkt_access	= false,
+	.ret_type	= RET_INTEGER,
+	.arg1_type	= ARG_PTR_TO_CTX,
+	.arg1_type	= ARG_ANYTHING,
+};
+
+BPF_CALL_2(bpf_lua_dataunref, struct xdp_buff *, ctx, int, data_ref) {
+	ldata_unref(ctx->L, data_ref);
+	return 0;
+}
+
+static const struct bpf_func_proto bpf_lua_dataunref_proto = {
+	.func		= bpf_lua_dataunref,
+	.gpl_only	= false,
+	.pkt_access	= false,
+	.ret_type	= RET_VOID,
+	.arg1_type	= ARG_PTR_TO_CTX,
+	.arg2_type	= ARG_ANYTHING,
+};
+
 BPF_CALL_4(bpf_lua_pcall, struct xdp_buff *, ctx, char *, funcname,
 			int, num_args, int, num_rets) {
 	if (lua_getglobal(ctx->L, funcname) != LUA_TFUNCTION) {
@@ -5028,6 +5063,10 @@ bpf_base_func_proto(enum bpf_func_id func_id)
 			return bpf_get_trace_printk_proto();
 		/* else: fall through */
 #ifdef CONFIG_XDP_LUA
+	case BPF_FUNC_lua_dataref:
+		return &bpf_lua_dataref_proto;
+	case BPF_FUNC_lua_dataunref:
+		return &bpf_lua_dataunref_proto;
 	case BPF_FUNC_lua_pcall:
 		return &bpf_lua_pcall_proto;
 	case BPF_FUNC_lua_pop:
