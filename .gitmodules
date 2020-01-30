@@ -7,3 +7,6 @@
 [submodule "lib/luaxdp"]
 	path = lib/luaxdp
 	url = https://github.com/luainkernel/luaxdp.git
+[submodule "lib/luarcu"]
+	path = lib/luarcu
+	url = https://github.com/luainkernel/luarcu
