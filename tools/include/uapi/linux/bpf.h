@@ -2972,6 +2972,15 @@ union bpf_attr {
  *	Description
  *		Create new luaunpack user data buffer pointing to
  *		the captured packet at the specified offset
+ *
+ * void bpf_lua_tostring(void *ctx, const char *str, u32 size, int index)
+ *	Description
+ *		Converts the Lua value at the given index of the Lua
+ *		stack to a C string and copies size bytes of it to
+ *		value pointed by str
+ *	Return
+ *		1 if the value at the given index of the Lua stack is a
+ *		string; otherwise it returns 0
  */
 #define __BPF_FUNC_MAPPER(FN)		\
 	FN(unspec),			\
@@ -3106,7 +3115,8 @@ union bpf_attr {
 	FN(lua_pushstring),		\
 	FN(lua_toboolean),		\
 	FN(lua_tointeger),		\
-	FN(lua_newpacket),
+	FN(lua_newpacket),		\
+	FN(lua_tostring),
 	/* #endif CONFIG_XDP_LUA */
 
 /* integer value in 'imm' field of BPF_CALL instruction selects which helper
