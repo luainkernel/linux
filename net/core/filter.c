@@ -5005,6 +5005,32 @@ static const struct bpf_func_proto bpf_lua_newpacket_proto = {
 	.arg1_type	= ARG_PTR_TO_CTX,
 	.arg2_type	= ARG_ANYTHING,
 };
+
+BPF_LUA_CALL_3(bpf_lua_tostring, char *, str, u32, size, int, index) {
+	if (lua_isstring(L, index)) {
+		const char *s;
+		size_t bytes;
+
+		s = lua_tolstring(L, index, &bytes);
+		if (bytes + 1 > size)
+			return -ENAMETOOLONG;
+
+		strncpy(str, s, bytes + 1);
+		return bytes + 1;
+	}
+
+	return -EINVAL;
+}
+
+static const struct bpf_func_proto bpf_lua_tostring_proto = {
+	.func		= bpf_lua_tostring,
+	.gpl_only	= false,
+	.pkt_access	= false,
+	.ret_type	= RET_INTEGER,
+	.arg1_type	= ARG_PTR_TO_UNINIT_MEM,
+	.arg2_type	= ARG_CONST_SIZE,
+	.arg3_type	= ARG_ANYTHING,
+};
 #endif /* CONFIG_XDP_LUA */
 
 bool bpf_helper_changes_pkt_data(void *func)
@@ -5252,6 +5278,8 @@ xdp_lua_func_proto(enum bpf_func_id func_id)
 		return &bpf_lua_tointeger_proto;
 	case XDP_LUA_BPF_FUNC(newpacket):
 		return &bpf_lua_newpacket_proto;
+	case XDP_LUA_BPF_FUNC(tostring):
+		return &bpf_lua_tostring_proto;
 	default:
 		return bpf_base_func_proto(func_id);
 	}
