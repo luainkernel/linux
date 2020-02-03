@@ -2233,6 +2233,7 @@ union bpf_attr {
 	FN(lua_dataref),		\
 	FN(lua_dataunref),		\
 	FN(lua_pcall),			\
+	FN(lua_tostring),		\
 	FN(lua_pop),			\
 	FN(lua_pushinteger),		\
 	FN(lua_pushlightuserdata),	\
