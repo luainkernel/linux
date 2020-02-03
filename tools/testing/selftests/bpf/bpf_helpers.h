@@ -152,6 +152,8 @@ static void (*bpf_lua_dataunref)(void *ctx, int data_ref) =
 static int (*bpf_lua_pcall)(void *ctx, char *funcname, int num_args,
 				   int num_rets) =
     (void *) BPF_FUNC_lua_pcall;
+static int (*bpf_lua_tostring)(void *ctx, char *sslsni, u32 size, int index) =
+    (void *)BPF_FUNC_lua_tostring;
 static void (*bpf_lua_pop)(void *ctx, int index) =
     (void *)BPF_FUNC_lua_pop;
 static void (*bpf_lua_pushinteger)(void *ctx, int num) =
