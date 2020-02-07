@@ -4,3 +4,6 @@
 [submodule "lib/luadata"]
 	path = lib/luadata
 	url = https://github.com/luainkernel/luadata
+[submodule "lib/luaxdp"]
+	path = lib/luaxdp
+	url = https://github.com/luainkernel/luaxdp.git
