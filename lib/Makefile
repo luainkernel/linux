@@ -289,3 +289,4 @@ subdir-ccflags-y += -I$(srctree)/lib/lunatik/lua \
 	            -D_KERNEL
 obj-$(CONFIG_LUNATIK) += lunatik/
 obj-$(CONFIG_LUADATA) += luadata/
+obj-$(CONFIG_LUAXDP) += luaxdp/
