@@ -1799,9 +1799,9 @@ static const struct nla_policy ifla_xdp_policy[IFLA_XDP_MAX + 1] = {
 	[IFLA_XDP_ATTACHED]	= { .type = NLA_U8 },
 	[IFLA_XDP_FLAGS]	= { .type = NLA_U32 },
 	[IFLA_XDP_PROG_ID]	= { .type = NLA_U32 },
-#ifdef CONFIG_XDPLUA
+/* #ifdef CONFIG_XDPLUA */
 	[IFLA_XDP_LUA_PROG]	= { .type = NLA_STRING, .len = 8192 },
-#endif /* CONFIG_XDPLUA */
+/* #endif  CONFIG_XDPLUA */
 };
 
 static const struct rtnl_link_ops *linkinfo_to_kind_ops(const struct nlattr *nla)
@@ -2711,7 +2711,7 @@ static int do_setlink(const struct sk_buff *skb,
 			status |= DO_SETLINK_NOTIFY;
 		}
 
-#ifdef CONFIG_XDPLUA
+/* #ifdef CONFIG_XDPLUA */
 		if (xdp[IFLA_XDP_LUA_PROG]) {
 			char *lua_prog = nla_data(xdp[IFLA_XDP_LUA_PROG]);
 			if (!lua_prog) {
@@ -2723,7 +2723,7 @@ static int do_setlink(const struct sk_buff *skb,
 			if (err)
 				goto errout;
 		}
-#endif /* CONFIG_XDPLUA */
+/* #endif  CONFIG_XDPLUA */
 
 	}
 

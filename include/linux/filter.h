@@ -1229,7 +1229,7 @@ struct bpf_sockopt_kern {
 	s32		retval;
 };
 
-#ifdef CONFIG_XDPLUA
+/* #ifdef CONFIG_XDPLUA */
 extern struct list_head lua_state_cpu_list;
 
 struct lua_state_cpu {
@@ -1237,6 +1237,6 @@ struct lua_state_cpu {
 	int			cpu;
 	struct list_head	list;
 };
-#endif /* CONFIG_XDPLUA */
+/* #endif CONFIG_XDPLUA */
 
 #endif /* __LINUX_FILTER_H__ */
