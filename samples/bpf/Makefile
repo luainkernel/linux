@@ -110,7 +110,7 @@ task_fd_query-objs := bpf_load.o task_fd_query_user.o $(TRACE_HELPERS)
 xdp_sample_pkts-objs := xdp_sample_pkts_user.o $(TRACE_HELPERS)
 ibumad-objs := bpf_load.o ibumad_user.o $(TRACE_HELPERS)
 hbm-objs := bpf_load.o hbm.o $(CGROUP_HELPERS)
-# CONFIG_XDPLUA
+# CONFIG_XDP_LUA
 xdplua-objs := xdplua_user.o
 
 # Tell kbuild to always build the programs
@@ -173,7 +173,7 @@ always += xdp_sample_pkts_kern.o
 always += ibumad_kern.o
 always += hbm_out_kern.o
 always += hbm_edt_kern.o
-# CONFIG_XDPLUA
+# CONFIG_XDP_LUA
 always += xdplua_map_kern.o
 
 KBUILD_HOSTCFLAGS += -I$(objtree)/usr/include

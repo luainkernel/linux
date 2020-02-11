@@ -13,10 +13,10 @@
 xdp = require'xdp'
 
 function lookup(map)
-	local val = xdp.maplookup(map, 1)
+	local val = xdp.map_lookup(map, 1)
 	print('val', val)
 end
 
 function update(map)
-	xdplua.mapupdate(map, 1, 3)
+	xdp.map_update(map, 1, 3)
 end
