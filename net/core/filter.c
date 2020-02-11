@@ -76,6 +76,7 @@
 
 /* #ifdef CONFIG_XDPLUA */
 #include <lua.h>
+#include <luadata.h>
 /* #endif CONFIG_XDPLUA */
 
 /**
