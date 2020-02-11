@@ -21,8 +21,8 @@ struct bpf_map_def SEC("maps") test_map = {
 	.max_entries	= 20,
 };
 
-SEC("test_map")
-int xdp_test_map(struct xdp_md *ctx)
+SEC("xdp_lua_test_map")
+int xdp_lua_test_map_prog(struct xdp_md *ctx)
 {
 	char lookupname[] = "lookup";
 	char updatename[] = "update";
