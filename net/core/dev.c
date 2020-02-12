@@ -68,12 +68,12 @@
  *				        - netif_rx() feedback
  */
 
-/* #ifdef CONFIG_XDPLUA */
+#ifdef CONFIG_XDP_LUA
 #include <lua.h>
 #include <lauxlib.h>
 #include <lualib.h>
 #include <luadata.h>
-/* #endif CONFIG_XDPLUA */
+#endif /* CONFIG_XDP_LUA */
 
 #include <linux/uaccess.h>
 #include <linux/bitops.h>
@@ -171,9 +171,9 @@ static int call_netdevice_notifiers_extack(unsigned long val,
 					   struct netlink_ext_ack *extack);
 static struct napi_struct *napi_by_id(unsigned int napi_id);
 
-/* #ifdef CONFIG_XDPLUA */
+#ifdef CONFIG_XDP_LUA
 struct list_head lua_state_cpu_list;
-/* #endif CONFIG_XDPLUA */
+#endif /* CONFIG_XDP_LUA */
 
 /*
  * The @dev_base_head list is protected by @dev_base_lock and the rtnl
@@ -4382,9 +4382,9 @@ static u32 netif_receive_generic_xdp(struct sk_buff *skb,
 
 	rxqueue = netif_get_rxqueue(skb);
 	xdp->rxq = &rxqueue->xdp_rxq;
-/* #ifdef CONFIG_XDPLUA */
+#ifdef CONFIG_XDP_LUA
 	xdp->skb = skb;
-/* #endif CONFIG_XDPLUA */
+#endif /* CONFIG_XDP_LUA */
 
 	act = bpf_prog_run_xdp(xdp_prog, xdp);
 
@@ -5197,7 +5197,7 @@ static int generic_xdp_install(struct net_device *dev, struct netdev_bpf *xdp)
 	return ret;
 }
 
-/* #ifdef CONFIG_XDPLUA */
+#ifdef CONFIG_XDP_LUA
 int generic_xdp_lua_install_prog(char *lua_prog)
 {
 	struct lua_state_cpu *sc;
@@ -5211,7 +5211,7 @@ int generic_xdp_lua_install_prog(char *lua_prog)
 	}
 	return 0;
 }
-/* #endif CONFIG_XDPLUA */
+#endif /* CONFIG_XDP_LUA */
 
 static int netif_receive_skb_internal(struct sk_buff *skb)
 {
@@ -9830,9 +9830,9 @@ static struct pernet_operations __net_initdata default_device_ops = {
 static int __init net_dev_init(void)
 {
 	int i, rc = -ENOMEM;
-/* #ifdef CONFIG_XDPLUA */
+#ifdef CONFIG_XDP_LUA
 	struct lua_state_cpu *new_state_cpu;
-/* #endif CONFIG_XDPLUA */
+#endif /* CONFIG_XDP_LUA */
 
 	BUG_ON(!dev_boot_phase);
 
@@ -9847,9 +9847,9 @@ static int __init net_dev_init(void)
 		INIT_LIST_HEAD(&ptype_base[i]);
 
 	INIT_LIST_HEAD(&offload_base);
-/* #ifdef CONFIG_XDPLUA */
+#ifdef CONFIG_XDP_LUA
 	INIT_LIST_HEAD(&lua_state_cpu_list);
-/* #endif CONFIG_XDPLUA */
+#endif /* CONFIG_XDP_LUA */
 
 	if (register_pernet_subsys(&netdev_net_ops))
 		goto out;
@@ -9881,7 +9881,7 @@ static int __init net_dev_init(void)
 		sd->backlog.poll = process_backlog;
 		sd->backlog.weight = weight_p;
 
-/* #ifdef CONFIG_XDPLUA */
+#ifdef CONFIG_XDP_LUA
 		new_state_cpu = (struct lua_state_cpu *)
 			kmalloc(sizeof(struct lua_state_cpu), GFP_ATOMIC);
 		if (!new_state_cpu)
@@ -9899,7 +9899,7 @@ static int __init net_dev_init(void)
 		new_state_cpu->cpu = i;
 
 		list_add(&new_state_cpu->list, &lua_state_cpu_list);
-/* #endif CONFIG_XDPLUA */
+#endif /* CONFIG_XDP_LUA */
 	}
 
 	dev_boot_phase = 0;
