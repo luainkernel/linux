@@ -70,10 +70,10 @@ struct xdp_buff {
 	void *data_hard_start;
 	unsigned long handle;
 	struct xdp_rxq_info *rxq;
-/* #ifdef CONFIG_XDPLUA */
+#ifdef CONFIG_XDP_LUA
 	struct sk_buff *skb;
 	struct lua_State *L;
-/* #endif CONFIG_XDPLUA */
+#endif /* CONFIG_XDP_LUA */
 };
 
 struct xdp_frame {

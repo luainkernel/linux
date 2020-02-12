@@ -74,10 +74,10 @@
 #include <net/ipv6_stubs.h>
 #include <net/bpf_sk_storage.h>
 
-/* #ifdef CONFIG_XDPLUA */
+#ifdef CONFIG_XDP_LUA
 #include <lua.h>
 #include <luadata.h>
-/* #endif CONFIG_XDPLUA */
+#endif /* CONFIG_XDP_LUA */
 
 /**
  *	sk_filter_trim_cap - run a packet through a socket filter
@@ -5857,7 +5857,7 @@ static const struct bpf_func_proto bpf_tcp_check_syncookie_proto = {
 
 #endif /* CONFIG_INET */
 
-/* #ifdef CONFIG_XDPLUA */
+#ifdef CONFIG_XDP_LUA
 BPF_CALL_2(bpf_lua_dataref, struct xdp_buff *, ctx, int, offset) {
 	if (offset + ctx->data < ctx->data_end) {
 		int data_ref;
@@ -6065,7 +6065,7 @@ static const struct bpf_func_proto bpf_lua_tointeger_proto = {
 	.arg1_type	= ARG_PTR_TO_CTX,
 	.arg2_type	= ARG_ANYTHING,
 };
-/* #endif CONFIG_XDPLUA */
+#endif /* CONFIG_XDP_LUA */
 
 bool bpf_helper_changes_pkt_data(void *func)
 {
@@ -6141,7 +6141,7 @@ bpf_base_func_proto(enum bpf_func_id func_id)
 		return &bpf_spin_unlock_proto;
 	case BPF_FUNC_trace_printk:
 		return bpf_get_trace_printk_proto();
-/* #ifdef CONFIG_XDPLUA */
+#ifdef CONFIG_XDP_LUA
 	case BPF_FUNC_lua_dataref:
 		return &bpf_lua_dataref_proto;
 	case BPF_FUNC_lua_dataunref:
@@ -6168,7 +6168,7 @@ bpf_base_func_proto(enum bpf_func_id func_id)
 		return &bpf_lua_toboolean_proto;
 	case BPF_FUNC_lua_tointeger:
 		return &bpf_lua_tointeger_proto;
-/* #endif CONFIG_XDPLUA */
+#endif /* CONFIG_XDP_LUA */
 	default:
 		return NULL;
 	}
