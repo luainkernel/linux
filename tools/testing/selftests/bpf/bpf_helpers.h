@@ -167,8 +167,6 @@ static void (*bpf_lua_pushskb)(void *ctx) =
     (void *)BPF_FUNC_lua_pushskb;
 static void (*bpf_lua_pushstring)(void *ctx, const char *) =
     (void *)BPF_FUNC_lua_pushstring;
-static void (*bpf_lua_setstate)(void *ctx) =
-    (void *)BPF_FUNC_lua_setstate;
 static int (*bpf_lua_toboolean)(void *ctx, int index) =
     (void *)BPF_FUNC_lua_toboolean;
 static int (*bpf_lua_tointeger)(void *ctx, int index) =
