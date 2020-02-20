@@ -252,12 +252,14 @@ static void (*bpf_lua_pushskb)(void *ctx) =
     (void *)BPF_FUNC_lua_pushskb;
 static void (*bpf_lua_pushstring)(void *ctx, const char *) =
     (void *)BPF_FUNC_lua_pushstring;
-static void (*bpf_lua_setstate)(void *ctx) =
-    (void *)BPF_FUNC_lua_setstate;
 static int (*bpf_lua_toboolean)(void *ctx, int index) =
     (void *)BPF_FUNC_lua_toboolean;
 static int (*bpf_lua_tointeger)(void *ctx, int index) =
     (void *)BPF_FUNC_lua_tointeger;
+static void (*bpf_lua_putstate)(void *ctx) =
+    (void *)BPF_FUNC_lua_putstate;
+static void (*bpf_lua_removestate)(void *ctx) =
+    (void *)BPF_FUNC_lua_removestate;
 /* #endif CONFIG_XDPLUA */
 
 /* llvm builtin functions that eBPF C program may use to

@@ -159,6 +159,9 @@
 
 static DEFINE_SPINLOCK(ptype_lock);
 static DEFINE_SPINLOCK(offload_lock);
+#ifdef CONFIG_XDP_LUA
+static DEFINE_PER_CPU(spinlock_t, lua_state_lock);
+#endif
 struct list_head ptype_base[PTYPE_HASH_SIZE] __read_mostly;
 struct list_head ptype_all __read_mostly;	/* Taps */
 static struct list_head offload_base __read_mostly;
@@ -170,10 +173,6 @@ static int call_netdevice_notifiers_extack(unsigned long val,
 					   struct net_device *dev,
 					   struct netlink_ext_ack *extack);
 static struct napi_struct *napi_by_id(unsigned int napi_id);
-
-#ifdef CONFIG_XDP_LUA
-struct list_head lua_state_cpu_list;
-#endif /* CONFIG_XDP_LUA */
 
 /*
  * The @dev_base_head list is protected by @dev_base_lock and the rtnl
@@ -5198,16 +5197,24 @@ static int generic_xdp_install(struct net_device *dev, struct netdev_bpf *xdp)
 }
 
 #ifdef CONFIG_XDP_LUA
+DEFINE_PER_CPU(struct xdplua, xdplua_per_cpu);
+
 int generic_xdp_lua_install_prog(char *lua_prog)
 {
-	struct lua_state_cpu *sc;
+	struct xdplua *sc;
+	int i;
 
-	list_for_each_entry(sc, &lua_state_cpu_list, list) {
+	for_each_possible_cpu(i) {
+		sc = per_cpu_ptr(&xdplua_per_cpu, i);
+		spin_lock_bh(sc->lock);
 		if (luaL_dostring(sc->L, lua_prog)) {
 			pr_err(KERN_INFO "error: %s\nOn cpu: %d\n",
-				lua_tostring(sc->L, -1), sc->cpu);
+				lua_tostring(sc->L, -1), i);
+			spin_unlock_bh(sc->lock);
 			return -EINVAL;
 		}
+
+		spin_unlock_bh(sc->lock);
 	}
 	return 0;
 }
@@ -9830,9 +9837,6 @@ static struct pernet_operations __net_initdata default_device_ops = {
 static int __init net_dev_init(void)
 {
 	int i, rc = -ENOMEM;
-#ifdef CONFIG_XDP_LUA
-	struct lua_state_cpu *new_state_cpu;
-#endif /* CONFIG_XDP_LUA */
 
 	BUG_ON(!dev_boot_phase);
 
@@ -9847,9 +9851,6 @@ static int __init net_dev_init(void)
 		INIT_LIST_HEAD(&ptype_base[i]);
 
 	INIT_LIST_HEAD(&offload_base);
-#ifdef CONFIG_XDP_LUA
-	INIT_LIST_HEAD(&lua_state_cpu_list);
-#endif /* CONFIG_XDP_LUA */
 
 	if (register_pernet_subsys(&netdev_net_ops))
 		goto out;
@@ -9861,6 +9862,7 @@ static int __init net_dev_init(void)
 	for_each_possible_cpu(i) {
 		struct work_struct *flush = per_cpu_ptr(&flush_works, i);
 		struct softnet_data *sd = &per_cpu(softnet_data, i);
+		struct xdplua *xdplua = per_cpu_ptr(&xdplua_per_cpu, i);
 
 		INIT_WORK(flush, flush_backlog);
 
@@ -9880,25 +9882,17 @@ static int __init net_dev_init(void)
 		init_gro_hash(&sd->backlog);
 		sd->backlog.poll = process_backlog;
 		sd->backlog.weight = weight_p;
-
 #ifdef CONFIG_XDP_LUA
-		new_state_cpu = (struct lua_state_cpu *)
-			kmalloc(sizeof(struct lua_state_cpu), GFP_ATOMIC);
-		if (!new_state_cpu)
-			continue;
-
-		new_state_cpu->L = luaL_newstate();
-		if  (!new_state_cpu->L) {
-			kfree(new_state_cpu);
+		xdplua->L = luaL_newstate();
+		if  (!xdplua->L) {
+			kfree(xdplua);
 			continue;
 		}
 
-		luaL_openlibs(new_state_cpu->L);
-		luaL_requiref(new_state_cpu->L, "data", luaopen_data, 1);
-		lua_pop(new_state_cpu->L, 1);
-		new_state_cpu->cpu = i;
-
-		list_add(&new_state_cpu->list, &lua_state_cpu_list);
+		luaL_openlibs(xdplua->L);
+		luaL_requiref(xdplua->L, "data", luaopen_data, 1);
+		lua_pop(xdplua->L, 1);
+		xdplua->lock = per_cpu_ptr(&lua_state_lock, i);
 #endif /* CONFIG_XDP_LUA */
 	}
 
