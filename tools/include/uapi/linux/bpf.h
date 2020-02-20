@@ -2967,6 +2967,11 @@ union bpf_attr {
  *		The converted Lua value at the given index, if the value is
  *		convertible to an integer(see the Lua manual for more details
  *		on type conversion); otherwise returns 0
+ *
+ * void bpf_lua_newpacket(void *ctx, int offset)
+ *	Description
+ *		Create new luaunpack user data buffer pointing to
+ *		the captured packet at the specified offset
  */
 #define __BPF_FUNC_MAPPER(FN)		\
 	FN(unspec),			\
@@ -3100,7 +3105,8 @@ union bpf_attr {
 	FN(lua_pushskb),		\
 	FN(lua_pushstring),		\
 	FN(lua_toboolean),		\
-	FN(lua_tointeger),
+	FN(lua_tointeger),		\
+	FN(lua_newpacket),
 	/* #endif CONFIG_XDP_LUA */
 
 /* integer value in 'imm' field of BPF_CALL instruction selects which helper

@@ -3100,7 +3100,8 @@ union bpf_attr {
 	FN(lua_pushskb),		\
 	FN(lua_pushstring),		\
 	FN(lua_toboolean),		\
-	FN(lua_tointeger),
+	FN(lua_tointeger),		\
+	FN(lua_newpacket),
 	/* #endif CONFIG_XDP_LUA */
 
 /* integer value in 'imm' field of BPF_CALL instruction selects which helper
