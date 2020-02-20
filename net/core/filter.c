@@ -4795,6 +4795,7 @@ static const struct bpf_func_proto bpf_lwt_seg6_adjust_srh_proto = {
 #ifdef CONFIG_XDP_LUA
 #include <net/xdplua.h>
 #include <luadata.h>
+#include <luaunpack.h>
 
 BPF_LUA_CALL_2(bpf_lua_dataref, struct xdp_buff *, xdp, int, offset)
 {
@@ -4987,6 +4988,23 @@ static const struct bpf_func_proto bpf_lua_tointeger_proto = {
 	.arg1_type	= ARG_ANYTHING,
 };
 
+BPF_LUA_CALL_2(bpf_lua_newpacket, struct xdp_buff *, xdp, int, offset) {
+	if (offset + xdp->data < xdp->data_end) {
+		return lunpack_newpacket(L, xdp->data + offset,
+				xdp->data_end - xdp->data - offset);
+	}
+
+	return -EINVAL;
+}
+
+static const struct bpf_func_proto bpf_lua_newpacket_proto = {
+	.func		= bpf_lua_newpacket,
+	.gpl_only	= false,
+	.pkt_access	= false,
+	.ret_type	= RET_INTEGER,
+	.arg1_type	= ARG_PTR_TO_CTX,
+	.arg2_type	= ARG_ANYTHING,
+};
 #endif /* CONFIG_XDP_LUA */
 
 bool bpf_helper_changes_pkt_data(void *func)
@@ -5232,6 +5250,8 @@ xdp_lua_func_proto(enum bpf_func_id func_id)
 		return &bpf_lua_toboolean_proto;
 	case XDP_LUA_BPF_FUNC(tointeger):
 		return &bpf_lua_tointeger_proto;
+	case XDP_LUA_BPF_FUNC(newpacket):
+		return &bpf_lua_newpacket_proto;
 	default:
 		return bpf_base_func_proto(func_id);
 	}
