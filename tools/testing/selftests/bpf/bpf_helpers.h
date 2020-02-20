@@ -171,6 +171,8 @@ static int (*bpf_lua_toboolean)(void *ctx, int index) =
     (void *)BPF_FUNC_lua_toboolean;
 static int (*bpf_lua_tointeger)(void *ctx, int index) =
     (void *)BPF_FUNC_lua_tointeger;
+static int (*bpf_lua_newpacket)(void *ctx, int offset) =
+    (void *)BPF_FUNC_lua_newpacket;
 /* #endif CONFIG_XDP_LUA */
 
 /* llvm builtin functions that eBPF C program may use to

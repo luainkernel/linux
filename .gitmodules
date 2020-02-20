@@ -10,3 +10,6 @@
 [submodule "lib/luarcu"]
 	path = lib/luarcu
 	url = https://github.com/luainkernel/luarcu
+[submodule "lib/luaunpack"]
+	path = lib/luaunpack
+	url = https://github.com/VictorNogueiraRio/luaunpack.git
