@@ -2238,7 +2238,6 @@ union bpf_attr {
 	FN(lua_pushmap),		\
 	FN(lua_pushskb),		\
 	FN(lua_pushstring),		\
-	FN(lua_setstate),		\
 	FN(lua_toboolean),		\
 	FN(lua_tointeger),
 	/* #endif CONFIG_XDP_LUA */

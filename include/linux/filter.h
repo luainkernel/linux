@@ -1099,13 +1099,4 @@ struct bpf_sock_ops_kern {
 					 */
 };
 
-#ifdef CONFIG_XDP_LUA
-extern struct list_head lua_state_cpu_list;
-
-struct lua_state_cpu {
-	struct lua_State 	*L;
-	int			cpu;
-	struct list_head	list;
-};
-#endif /* CONFIG_XDP_LUA */
 #endif /* __LINUX_FILTER_H__ */
