@@ -69,10 +69,6 @@
 #include <net/seg6.h>
 #include <net/seg6_local.h>
 
-#ifdef CONFIG_XDP_LUA
-#include <lua.h>
-#endif /* CONFIG_XDP_LUA */
-
 /**
  *	sk_filter_trim_cap - run a packet through a socket filter
  *	@sk: sock associated with &sk_buff
@@ -4797,16 +4793,16 @@ static const struct bpf_func_proto bpf_lwt_seg6_adjust_srh_proto = {
 #endif /* CONFIG_IPV6_SEG6_BPF */
 
 #ifdef CONFIG_XDP_LUA
-BPF_CALL_2(bpf_lua_dataref, struct xdp_buff *, ctx, int, offset) {
-	if (offset + ctx->data < ctx->data_end) {
-		int data_ref;
+#include <net/xdplua.h>
+#include <luadata.h>
 
-		data_ref = ldata_newref(ctx->L, ctx->data + offset,
-				ctx->data_end - ctx->data - offset);
-		return data_ref;
+BPF_LUA_CALL_2(bpf_lua_dataref, struct xdp_buff *, xdp, int, offset)
+{
+	if (offset + xdp->data < xdp->data_end) {
+		return ldata_newref(L, xdp->data + offset,
+				xdp->data_end - xdp->data - offset);
 	}
-
-	return -1;
+	return -EPERM;
 }
 
 static const struct bpf_func_proto bpf_lua_dataref_proto = {
@@ -4815,11 +4811,12 @@ static const struct bpf_func_proto bpf_lua_dataref_proto = {
 	.pkt_access	= false,
 	.ret_type	= RET_INTEGER,
 	.arg1_type	= ARG_PTR_TO_CTX,
-	.arg1_type	= ARG_ANYTHING,
+	.arg2_type	= ARG_ANYTHING,
 };
 
-BPF_CALL_2(bpf_lua_dataunref, struct xdp_buff *, ctx, int, data_ref) {
-	ldata_unref(ctx->L, data_ref);
+BPF_LUA_CALL_1(bpf_lua_dataunref, int, data_ref)
+{
+	ldata_unref(L, data_ref);
 	return 0;
 }
 
@@ -4827,25 +4824,31 @@ static const struct bpf_func_proto bpf_lua_dataunref_proto = {
 	.func		= bpf_lua_dataunref,
 	.gpl_only	= false,
 	.pkt_access	= false,
-	.ret_type	= RET_VOID,
-	.arg1_type	= ARG_PTR_TO_CTX,
-	.arg2_type	= ARG_ANYTHING,
+	.ret_type	= RET_INTEGER,
+	.arg1_type	= ARG_ANYTHING,
 };
 
-BPF_CALL_4(bpf_lua_pcall, struct xdp_buff *, ctx, char *, funcname,
-			int, num_args, int, num_rets) {
-	if (lua_getglobal(ctx->L, funcname) != LUA_TFUNCTION) {
+BPF_LUA_CALL_3(bpf_lua_pcall, const char *, funcname, int, num_args, int, num_rets)
+{
+	int base = lua_gettop(L) - num_args;
+
+	if (lua_getglobal(L, funcname) != LUA_TFUNCTION) {
 		pr_err("function %s not found\n", funcname);
-		lua_pop(ctx->L, num_args);
-		return 0;
+		num_rets = 0;
+		goto clean;
 	}
 
-	lua_insert(ctx->L, 1);
-	if (lua_pcall(ctx->L, num_args, num_rets, 0)) {
-		pr_err("%s\n", lua_tostring(ctx->L, -1));
-		lua_pop(ctx->L, 1);
-		return 0;
+	lua_insert(L, base + 1);
+	if (lua_pcall(L, num_args, num_rets, 0)) {
+		pr_err("%s\n", lua_tostring(L, -1));
+		num_rets = 0;
+		goto clean;
 	}
+
+	base += num_rets;
+
+clean:
+	lua_settop(L, base);
 	return num_rets;
 }
 
@@ -4854,14 +4857,14 @@ static const struct bpf_func_proto bpf_lua_pcall_proto = {
 	.gpl_only	= false,
 	.pkt_access	= false,
 	.ret_type	= RET_INTEGER,
-	.arg1_type	= ARG_PTR_TO_CTX,
+	.arg1_type	= ARG_ANYTHING,
 	.arg2_type	= ARG_ANYTHING,
-	.arg3_type	= RET_INTEGER,
-	.arg4_type	= RET_INTEGER,
+	.arg3_type	= ARG_ANYTHING,
 };
 
-BPF_CALL_2(bpf_lua_pop, struct xdp_buff *, ctx, int, index) {
-	lua_pop(ctx->L, index);
+BPF_LUA_CALL_1(bpf_lua_pop, int, n)
+{
+	lua_pop(L, n);
 	return 0;
 }
 
@@ -4869,14 +4872,13 @@ static const struct bpf_func_proto bpf_lua_pop_proto = {
 	.func		= bpf_lua_pop,
 	.gpl_only	= false,
 	.pkt_access	= false,
-	.ret_type	= RET_VOID,
-	.arg1_type	= ARG_PTR_TO_CTX,
-	.arg2_type	= ARG_ANYTHING,
+	.ret_type	= RET_INTEGER,
+	.arg1_type	= ARG_ANYTHING,
 };
 
-BPF_CALL_2(bpf_lua_pushinteger, struct xdp_buff *, ctx, lua_Integer, integer) {
-	verify_and_lock();
-	lua_pushinteger(ctx->L, integer);
+BPF_LUA_CALL_1(bpf_lua_pushinteger, lua_Integer, integer)
+{
+	lua_pushinteger(L, integer);
 	return 0;
 }
 
@@ -4884,13 +4886,13 @@ static const struct bpf_func_proto bpf_lua_pushinteger_proto = {
 	.func		= bpf_lua_pushinteger,
 	.gpl_only	= false,
 	.pkt_access	= false,
-	.ret_type	= RET_VOID,
-	.arg1_type	= ARG_PTR_TO_CTX,
-	.arg2_type	= ARG_ANYTHING,
+	.ret_type	= RET_INTEGER,
+	.arg1_type	= ARG_ANYTHING,
 };
 
-BPF_CALL_2(bpf_lua_pushlightuserdata, struct xdp_buff *, ctx, void *, ptr) {
-	lua_pushlightuserdata(ctx->L, ptr);
+BPF_LUA_CALL_1(bpf_lua_pushlightuserdata, void *, ptr)
+{
+	lua_pushlightuserdata(L, ptr);
 	return 0;
 }
 
@@ -4898,13 +4900,13 @@ static const struct bpf_func_proto bpf_lua_pushlightuserdata_proto = {
 	.func		= bpf_lua_pushlightuserdata,
 	.gpl_only	= false,
 	.pkt_access	= false,
-	.ret_type	= RET_VOID,
-	.arg1_type	= ARG_PTR_TO_CTX,
-	.arg2_type	= ARG_ANYTHING,
+	.ret_type	= RET_INTEGER,
+	.arg1_type	= ARG_ANYTHING,
 };
 
-BPF_CALL_3(bpf_lua_pushlstring, struct xdp_buff *, ctx, const char *, str, size_t, len) {
-	lua_pushlstring(ctx->L, str, len);
+BPF_LUA_CALL_2(bpf_lua_pushlstring, const char *, str, size_t, len)
+{
+	lua_pushlstring(L, str, len);
 	return 0;
 }
 
@@ -4912,14 +4914,14 @@ static const struct bpf_func_proto bpf_lua_pushlstring_proto = {
 	.func		= bpf_lua_pushlstring,
 	.gpl_only	= false,
 	.pkt_access	= false,
-	.ret_type	= RET_VOID,
-	.arg1_type	= ARG_PTR_TO_CTX,
+	.ret_type	= RET_INTEGER,
+	.arg1_type	= ARG_ANYTHING,
 	.arg2_type	= ARG_ANYTHING,
-	.arg3_type	= ARG_ANYTHING,
 };
 
-BPF_CALL_2(bpf_lua_pushmap, struct xdp_buff *, ctx, struct bpf_map *, map) {
-	lua_pushlightuserdata(ctx->L, map);
+BPF_LUA_CALL_1(bpf_lua_pushmap, struct bpf_map *, map)
+{
+	lua_pushlightuserdata(L, map);
 	return 0;
 }
 
@@ -4927,13 +4929,14 @@ static const struct bpf_func_proto bpf_lua_pushmap_proto = {
 	.func		= bpf_lua_pushmap,
 	.gpl_only	= false,
 	.pkt_access	= false,
-	.ret_type	= RET_VOID,
-	.arg1_type	= ARG_PTR_TO_CTX,
-	.arg2_type	= ARG_ANYTHING,
+	.ret_type	= RET_INTEGER,
+	.arg1_type	= ARG_CONST_MAP_PTR,
 };
 
-BPF_CALL_1(bpf_lua_pushskb, struct xdp_buff *, ctx) {
-	lua_pushlightuserdata(ctx->L, ctx->skb);
+
+BPF_LUA_CALL_0(bpf_lua_pushskb)
+{
+	lua_pushlightuserdata(L, xdp_lua_get_skb());
 	return 0;
 }
 
@@ -4941,12 +4944,12 @@ static const struct bpf_func_proto bpf_lua_pushskb_proto = {
 	.func		= bpf_lua_pushskb,
 	.gpl_only	= false,
 	.pkt_access	= false,
-	.ret_type	= RET_VOID,
-	.arg1_type	= ARG_PTR_TO_CTX,
+	.ret_type	= RET_INTEGER,
 };
 
-BPF_CALL_2(bpf_lua_pushstring, struct xdp_buff *, ctx, const char *, str) {
-	lua_pushstring(ctx->L, str);
+BPF_LUA_CALL_1(bpf_lua_pushstring, const char *, str)
+{
+	lua_pushstring(L, str);
 	return 0;
 }
 
@@ -4954,34 +4957,13 @@ static const struct bpf_func_proto bpf_lua_pushstring_proto = {
 	.func		= bpf_lua_pushstring,
 	.gpl_only	= false,
 	.pkt_access	= false,
-	.ret_type	= RET_VOID,
-	.arg1_type	= ARG_PTR_TO_CTX,
-	.arg2_type	= ARG_ANYTHING,
+	.ret_type	= RET_INTEGER,
+	.arg1_type	= ARG_ANYTHING,
 };
 
-BPF_CALL_1(bpf_lua_setstate, struct xdp_buff *, ctx){
-	struct lua_state_cpu *sc;
-	int cpu = smp_processor_id();
-
-	list_for_each_entry(sc, &lua_state_cpu_list, list) {
-		if (sc->cpu == cpu) {
-			ctx->L = sc->L;
-			break;
-		}
-	}
-	return 0;
-}
-
-static const struct bpf_func_proto bpf_lua_setstate_proto = {
-	.func		= bpf_lua_setstate,
-	.gpl_only	= false,
-	.pkt_access	= false,
-	.ret_type	= RET_VOID,
-	.arg1_type	= ARG_PTR_TO_CTX,
-};
-
-BPF_CALL_2(bpf_lua_toboolean, struct xdp_buff *, ctx, int, index) {
-	return lua_toboolean(ctx->L, index);
+BPF_LUA_CALL_1(bpf_lua_toboolean, int, index)
+{
+	return lua_toboolean(L, index);
 }
 
 static const struct bpf_func_proto bpf_lua_toboolean_proto = {
@@ -4989,12 +4971,12 @@ static const struct bpf_func_proto bpf_lua_toboolean_proto = {
 	.gpl_only	= false,
 	.pkt_access	= false,
 	.ret_type	= RET_INTEGER,
-	.arg1_type	= ARG_PTR_TO_CTX,
-	.arg2_type	= ARG_ANYTHING,
+	.arg1_type	= ARG_ANYTHING,
 };
 
-BPF_CALL_2(bpf_lua_tointeger, struct xdp_buff *, ctx, int, index) {
-	return lua_tointeger(ctx->L, index);
+BPF_LUA_CALL_1(bpf_lua_tointeger, int, index)
+{
+	return lua_tointeger(L, index);
 }
 
 static const struct bpf_func_proto bpf_lua_tointeger_proto = {
@@ -5002,9 +4984,9 @@ static const struct bpf_func_proto bpf_lua_tointeger_proto = {
 	.gpl_only	= false,
 	.pkt_access	= false,
 	.ret_type	= RET_INTEGER,
-	.arg1_type	= ARG_PTR_TO_CTX,
-	.arg2_type	= ARG_ANYTHING,
+	.arg1_type	= ARG_ANYTHING,
 };
+
 #endif /* CONFIG_XDP_LUA */
 
 bool bpf_helper_changes_pkt_data(void *func)
@@ -5062,34 +5044,6 @@ bpf_base_func_proto(enum bpf_func_id func_id)
 		if (capable(CAP_SYS_ADMIN))
 			return bpf_get_trace_printk_proto();
 		/* else: fall through */
-#ifdef CONFIG_XDP_LUA
-	case BPF_FUNC_lua_dataref:
-		return &bpf_lua_dataref_proto;
-	case BPF_FUNC_lua_dataunref:
-		return &bpf_lua_dataunref_proto;
-	case BPF_FUNC_lua_pcall:
-		return &bpf_lua_pcall_proto;
-	case BPF_FUNC_lua_pop:
-		return &bpf_lua_pop_proto;
-	case BPF_FUNC_lua_pushinteger:
-		return &bpf_lua_pushinteger_proto;
-	case BPF_FUNC_lua_pushlightuserdata:
-		return &bpf_lua_pushlightuserdata_proto;
-	case BPF_FUNC_lua_pushlstring:
-		return &bpf_lua_pushlstring_proto;
-	case BPF_FUNC_lua_pushmap:
-		return &bpf_lua_pushmap_proto;
-	case BPF_FUNC_lua_pushskb:
-		return &bpf_lua_pushskb_proto;
-	case BPF_FUNC_lua_pushstring:
-		return &bpf_lua_pushstring_proto;
-	case BPF_FUNC_lua_setstate:
-		return &bpf_lua_setstate_proto;
-	case BPF_FUNC_lua_toboolean:
-		return &bpf_lua_toboolean_proto;
-	case BPF_FUNC_lua_tointeger:
-		return &bpf_lua_tointeger_proto;
-#endif /* CONFIG_XDP_LUA */
 	default:
 		return NULL;
 	}
@@ -5246,6 +5200,44 @@ tc_cls_act_func_proto(enum bpf_func_id func_id, const struct bpf_prog *prog)
 	}
 }
 
+#ifdef CONFIG_XDP_LUA
+static const struct bpf_func_proto *
+xdp_lua_func_proto(enum bpf_func_id func_id)
+{
+	if (!capable(CAP_SYS_ADMIN))
+		return bpf_base_func_proto(func_id);
+
+	switch(func_id) {
+	case XDP_LUA_BPF_FUNC(dataref):
+		return &bpf_lua_dataref_proto;
+	case XDP_LUA_BPF_FUNC(dataunref):
+		return &bpf_lua_dataunref_proto;
+	case XDP_LUA_BPF_FUNC(pcall):
+		return &bpf_lua_pcall_proto;
+	case XDP_LUA_BPF_FUNC(pop):
+		return &bpf_lua_pop_proto;
+	case XDP_LUA_BPF_FUNC(pushinteger):
+		return &bpf_lua_pushinteger_proto;
+	case XDP_LUA_BPF_FUNC(pushlightuserdata):
+		return &bpf_lua_pushlightuserdata_proto;
+	case XDP_LUA_BPF_FUNC(pushlstring):
+		return &bpf_lua_pushlstring_proto;
+	case XDP_LUA_BPF_FUNC(pushmap):
+		return &bpf_lua_pushmap_proto;
+	case XDP_LUA_BPF_FUNC(pushskb):
+		return &bpf_lua_pushskb_proto;
+	case XDP_LUA_BPF_FUNC(pushstring):
+		return &bpf_lua_pushstring_proto;
+	case XDP_LUA_BPF_FUNC(toboolean):
+		return &bpf_lua_toboolean_proto;
+	case XDP_LUA_BPF_FUNC(tointeger):
+		return &bpf_lua_tointeger_proto;
+	default:
+		return bpf_base_func_proto(func_id);
+	}
+}
+#endif /* CONFIG_XDP_LUA */
+
 static const struct bpf_func_proto *
 xdp_func_proto(enum bpf_func_id func_id, const struct bpf_prog *prog)
 {
@@ -5269,7 +5261,11 @@ xdp_func_proto(enum bpf_func_id func_id, const struct bpf_prog *prog)
 	case BPF_FUNC_fib_lookup:
 		return &bpf_xdp_fib_lookup_proto;
 	default:
+#ifdef CONFIG_XDP_LUA
+		return xdp_lua_func_proto(func_id);
+#else
 		return bpf_base_func_proto(func_id);
+#endif /* CONFIG_XDP_LUA */
 	}
 }
 

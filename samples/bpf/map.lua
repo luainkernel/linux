@@ -12,11 +12,6 @@
 --
 xdp = require'xdp'
 
-function lookup(map)
-	local val = xdp.map_lookup(map, 1)
-	print('val', val)
-end
-
 function update(map)
-	xdp.map_update(map, 1, 3)
+  xdp.map_update(map, 0, xdp.map_lookup(map, 0) + 1)
 end

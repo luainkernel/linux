@@ -25,7 +25,7 @@
 
 #include "bpf_util.h"
 
-static int ifindex = 0;
+#define MAXFILENAMELEN 256
 
 static void usage(const char *prog) {
 	fprintf(stderr, "usage: %s [OPTS]\n"
@@ -38,32 +38,47 @@ static void usage(const char *prog) {
 		prog);
 }
 
-static char *extract_lua_prog(const char *path)
+static char *extract_script(const char *path)
 {
 	FILE *f;
-	long prog_size;
-	char *lua_prog;
+	long script_len;
+	size_t read;
+	char *script = NULL;
 
 	f = fopen(path, "r");
 	if (f == NULL) {
-		perror("unable to xopen lua file");
+		perror("unable to open lua file");
 		return NULL;
 	}
 
-	fseek(f, 0 , SEEK_END);
-	prog_size = ftell(f);
+	if (fseek(f, 0 , SEEK_END) < 0) {
+		perror("unable to reach end of script file");
+		goto out;
+	}
+	script_len = ftell(f);
+	if (script_len < 0) {
+		perror("error while attempting to get script length");
+		goto out;
+	}
 	rewind(f);
 
-	lua_prog = (char *) malloc(prog_size + 1);
-	memset(lua_prog, 0, prog_size + 1);
-	if (fread(lua_prog, 1, prog_size, f) < 0) {
+	script = (char *) malloc(script_len + 1);
+	if (!script) {
+		perror("failed to alloc lua script");
+		goto out;
+	}
+	memset(script, 0, script_len + 1);
+	read = fread(script, 1, script_len, f);
+	if (read != script_len) {
 		perror("unable to read lua file");
-		return NULL;
+		free(script);
+		script = NULL;
+		goto out;
 	}
 
-	lua_prog[prog_size] = '\0';
+out:
 	fclose(f);
-	return lua_prog;
+	return script;
 }
 
 static int do_attach_ebpf(int idx, int fd, const char *name)
@@ -77,11 +92,11 @@ static int do_attach_ebpf(int idx, int fd, const char *name)
 	return err;
 }
 
-static int do_attach_lua(const char *name, char *lua_prog)
+static int do_attach_lua(const char *script)
 {
 	int err;
 
-	err = bpf_set_link_xdp_lua_prog(lua_prog, 0);
+	err = bpf_set_link_xdp_lua_script(script);
 	if (err < 0)
 		fprintf(stderr, "ERROR: failed to attach lua script to %s\n", name);
 
@@ -113,27 +128,31 @@ static void poll(int map_fd, int interval) {
 int main(int argc, char *argv[])
 {
 	struct rlimit r = {RLIM_INFINITY, RLIM_INFINITY};
-	char lua_filename[256];
-	char filename[256];
+	char lua_filename[MAXFILENAMELEN];
+	char filename[MAXFILENAMELEN];
+	char script[XDP_LUA_MAX_SCRIPT_LEN];
+	char ifname[IFNAMSIZ];
 	struct bpf_object *obj;
 	int opt, prog_fd;
 	int rx_cnt_map_fd;
-	int detach = 0, attach_lua = 0, attach_ebpf = 0, monitor = 0;
-	char *lua_prog = NULL;
-	const char *optstr = "s:p:i:dm";
+	int ifindex = 0;
+	int detach = 0, attach_lua_file = 0, attach_ebpf = 0, monitor = 0,
+		attach_lua_script = 0, interval = 1, duration = 1;
+
+	const char *optstr = "f:p:i:dms:I:D:";
 	struct bpf_prog_load_attr prog_load_attr = {
 		.prog_type	= BPF_PROG_TYPE_XDP,
 	};
 	struct bpf_map *map;
 
-	memset(lua_filename, 0, 256);
-	memset(filename, 0, 256);
+	memset(lua_filename, 0, MAXFILENAMELEN);
+	memset(filename, 0, MAXFILENAMELEN);
+	memset(script, 0, XDP_LUA_MAX_SCRIPT_LEN);
 	while ((opt = getopt(argc, argv, optstr)) != -1) {
 		switch (opt) {
-			case 's':
-				snprintf(lua_filename, sizeof(lua_filename),
-						"%s", optarg);
-				attach_lua = 1;
+			case 'f':
+				snprintf(lua_filename, sizeof(lua_filename), "%s", optarg);
+				attach_lua_file = 1;
 				break;
 			case 'p':
 				snprintf(filename, sizeof(filename),
@@ -144,10 +163,21 @@ int main(int argc, char *argv[])
 				detach = 1;
 				break;
 			case 'i':
+				snprintf(ifname, sizeof(ifname), "%s", optarg);
 				ifindex = if_nametoindex(optarg);
 				break;
 			case 'm':
 				monitor = 1;
+				break;
+			case 's':
+				snprintf(script, sizeof(script), "%s", optarg);
+				attach_lua_script = 1;
+				break;
+			case 'I':
+				interval = atoi(optarg);
+				break;
+			case 'D':
+				duration = atoi(optarg);
 				break;
 			default:
 				usage(basename(argv[0]));
@@ -168,7 +198,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (detach) {
-		if (do_detach(ifindex, lua_filename) < 0)
+		if (do_detach(ifindex, ifname) < 0)
 			return 1;
 
 		return 0;
@@ -185,29 +215,38 @@ int main(int argc, char *argv[])
 			return 1;
 		}
 
-		if (do_attach_ebpf(ifindex, prog_fd, lua_filename) < 0)
+		if (do_attach_ebpf(ifindex, prog_fd, ifname) < 0)
 			return 1;
 
 	}
 
-	if (attach_lua) {
-		lua_prog = extract_lua_prog(lua_filename);
-		if (!lua_prog)
+	if (attach_lua_file) {
+		char *extracted_script = extract_script(lua_filename);
+		if (!extracted_script)
 			return 1;
 
-		if (do_attach_lua(lua_filename, lua_prog) < 0) {
-			free(lua_prog);
+		if (do_attach_lua(extracted_script) < 0) {
+			free(extracted_script);
 			return 1;
 		}
 
-		free(lua_prog);
+		free(extracted_script);
 	}
+
+	if (attach_lua_script)
+		if (do_attach_lua(script) < 0)
+			return 1;
 
 	if (monitor) {
 		map = bpf_object__find_map_by_name(obj, "rx_cnt");
 		rx_cnt_map_fd = bpf_map__fd(map);
 
-		poll(rx_cnt_map_fd, 1);
+		poll(rx_cnt_map_fd, interval, duration);
+
+		if (ifindex && attach_ebpf) {
+			if (do_detach(ifindex, ifname) < 0)
+				return 1;
+		}
 	}
 	return 0;
 }

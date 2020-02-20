@@ -149,29 +149,25 @@ static int (*bpf_lua_dataref)(void *ctx, int offset) =
     (void *)BPF_FUNC_lua_dataref;
 static void (*bpf_lua_dataunref)(void *ctx, int data_ref) =
     (void *)BPF_FUNC_lua_dataunref;
-static int (*bpf_lua_pcall)(void *ctx, char *funcname, int num_args,
-				   int num_rets) =
+static int (*bpf_lua_pcall)(const char *funcname, int num_args, int num_rets) =
     (void *) BPF_FUNC_lua_pcall;
-static void (*bpf_lua_pop)(void *ctx, int index) =
+static void (*bpf_lua_pop)(int index) =
     (void *)BPF_FUNC_lua_pop;
-static void (*bpf_lua_pushinteger)(void *ctx, int num) =
+static void (*bpf_lua_pushinteger)(int num) =
     (void *)BPF_FUNC_lua_pushinteger;
-static void (*bpf_lua_pushlightuserdata)(void *ctx, void *ptr) =
+static void (*bpf_lua_pushlightuserdata)(void *ptr) =
     (void *)BPF_FUNC_lua_pushlightuserdata;
-static void (*bpf_lua_pushlstring)(void *ctx, const char *,
-				   size_t len) =
+static void (*bpf_lua_pushlstring)(const char * str, size_t len) =
     (void *)BPF_FUNC_lua_pushlstring;
-static void (*bpf_lua_pushmap)(void *ctx, void *map) =
+static void (*bpf_lua_pushmap)(void *map) =
     (void *)BPF_FUNC_lua_pushmap;
-static void (*bpf_lua_pushskb)(void *ctx) =
+static void (*bpf_lua_pushskb)(void) =
     (void *)BPF_FUNC_lua_pushskb;
-static void (*bpf_lua_pushstring)(void *ctx, const char *) =
+static void (*bpf_lua_pushstring)(const char *str) =
     (void *)BPF_FUNC_lua_pushstring;
-static void (*bpf_lua_setstate)(void *ctx) =
-    (void *)BPF_FUNC_lua_setstate;
-static int (*bpf_lua_toboolean)(void *ctx, int index) =
+static int (*bpf_lua_toboolean)(int index) =
     (void *)BPF_FUNC_lua_toboolean;
-static int (*bpf_lua_tointeger)(void *ctx, int index) =
+static int (*bpf_lua_tointeger)(int index) =
     (void *)BPF_FUNC_lua_tointeger;
 /* #endif CONFIG_XDP_LUA */
 
