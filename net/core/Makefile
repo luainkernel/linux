@@ -10,7 +10,7 @@ obj-$(CONFIG_SYSCTL) += sysctl_net_core.o
 
 CFLAGS_dev.o = -Ilib/lunatik/lua/ -D_KERNEL
 CFLAGS_filter.o = -Ilib/lunatik/lua/ -D_KERNEL \
-		-Ilib/luadata/
+		-Ilib/luadata/ -Ilib/luaunpack/
 CFLAGS_rtnetlink.o = -Ilib/lunatik/lua/ -D_KERNEL
 CFLAGS_xdplua.o = -Ilib/lunatik/lua/ -Ilib/luadata -D_KERNEL
 obj-y		     += dev.o ethtool.o dev_addr_lists.o dst.o netevent.o \
