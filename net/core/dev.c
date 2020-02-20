@@ -71,6 +71,7 @@
 #ifdef CONFIG_XDP_LUA
 #include <lua.h>
 #include <lauxlib.h>
+#include <lstate.h>
 #include <lualib.h>
 #include <luadata.h>
 #endif /* CONFIG_XDP_LUA */
@@ -159,6 +160,9 @@
 
 static DEFINE_SPINLOCK(ptype_lock);
 static DEFINE_SPINLOCK(offload_lock);
+#ifdef CONFIG_XDP_LUA
+DEFINE_PER_CPU(struct xdplua_create_work, luaworks);
+#endif
 struct list_head ptype_base[PTYPE_HASH_SIZE] __read_mostly;
 struct list_head ptype_all __read_mostly;	/* Taps */
 static struct list_head offload_base __read_mostly;
@@ -170,10 +174,6 @@ static int call_netdevice_notifiers_extack(unsigned long val,
 					   struct net_device *dev,
 					   struct netlink_ext_ack *extack);
 static struct napi_struct *napi_by_id(unsigned int napi_id);
-
-#ifdef CONFIG_XDP_LUA
-struct list_head lua_state_cpu_list;
-#endif /* CONFIG_XDP_LUA */
 
 /*
  * The @dev_base_head list is protected by @dev_base_lock and the rtnl
@@ -4523,6 +4523,9 @@ static u32 netif_receive_generic_xdp(struct sk_buff *skb,
 	bool orig_bcast;
 	int hlen, off;
 	u32 mac_len;
+#ifdef CONFIG_XDP_LUA
+	struct xdplua_create_work *lw;
+#endif /* CONFIG_XDP_LUA */
 
 	/* Reinjected packets coming from act_mirred or similar should
 	 * not get XDP generic processing.
@@ -4568,10 +4571,20 @@ static u32 netif_receive_generic_xdp(struct sk_buff *skb,
 	rxqueue = netif_get_rxqueue(skb);
 	xdp->rxq = &rxqueue->xdp_rxq;
 #ifdef CONFIG_XDP_LUA
+	lw = this_cpu_ptr(&luaworks);
+
 	xdp->skb = skb;
+	xdp->L = lw->L;
 #endif /* CONFIG_XDP_LUA */
 
 	act = bpf_prog_run_xdp(xdp_prog, xdp);
+
+#ifdef CONFIG_XDP_LUA
+	if (lw->init) {
+		lw->init = false;
+		spin_unlock(&lw->lock);
+	}
+#endif /* CONFIG_XDP_LUA */
 
 	/* check if bpf_xdp_adjust_head was used */
 	off = xdp->data - orig_data;
@@ -5381,16 +5394,29 @@ static int generic_xdp_install(struct net_device *dev, struct netdev_bpf *xdp)
 }
 
 #ifdef CONFIG_XDP_LUA
-int generic_xdp_lua_install_prog(char *lua_prog)
-{
-	struct lua_state_cpu *sc;
 
-	list_for_each_entry(sc, &lua_state_cpu_list, list) {
-		if (luaL_dostring(sc->L, lua_prog)) {
-			pr_err(KERN_INFO "error: %s\nOn cpu: %d\n",
-				lua_tostring(sc->L, -1), sc->cpu);
-			return -EINVAL;
-		}
+static void per_cpu_xdp_lua_install(struct work_struct *w) {
+	int this_cpu = smp_processor_id();
+	struct xdplua_create_work *lw =
+		container_of(w, struct xdplua_create_work, work);
+
+	spin_lock_bh(&lw->lock);
+	if (luaL_dostring(lw->L, lw->lua_script)) {
+		pr_err(KERN_INFO "error: %s\nOn cpu: %d\n",
+			lua_tostring(lw->L, -1), this_cpu);
+	}
+	spin_unlock_bh(&lw->lock);
+}
+
+int generic_xdp_lua_install_prog(char *lua_script)
+{
+	int cpu;
+	struct xdplua_create_work *lw;
+
+	for_each_possible_cpu(cpu) {
+		lw = per_cpu_ptr(&luaworks, cpu);
+		strcpy(lw->lua_script, lua_script);
+		schedule_work_on(cpu, &lw->work);
 	}
 	return 0;
 }
@@ -10492,9 +10518,6 @@ static struct pernet_operations __net_initdata default_device_ops = {
 static int __init net_dev_init(void)
 {
 	int i, rc = -ENOMEM;
-#ifdef CONFIG_XDP_LUA
-	struct lua_state_cpu *new_state_cpu;
-#endif /* CONFIG_XDP_LUA */
 
 	BUG_ON(!dev_boot_phase);
 
@@ -10509,9 +10532,6 @@ static int __init net_dev_init(void)
 		INIT_LIST_HEAD(&ptype_base[i]);
 
 	INIT_LIST_HEAD(&offload_base);
-#ifdef CONFIG_XDP_LUA
-	INIT_LIST_HEAD(&lua_state_cpu_list);
-#endif /* CONFIG_XDP_LUA */
 
 	if (register_pernet_subsys(&netdev_net_ops))
 		goto out;
@@ -10523,6 +10543,9 @@ static int __init net_dev_init(void)
 	for_each_possible_cpu(i) {
 		struct work_struct *flush = per_cpu_ptr(&flush_works, i);
 		struct softnet_data *sd = &per_cpu(softnet_data, i);
+#ifdef CONFIG_XDP_LUA
+		struct xdplua_create_work *lw = per_cpu_ptr(&luaworks, i);
+#endif
 
 		INIT_WORK(flush, flush_backlog);
 
@@ -10542,25 +10565,18 @@ static int __init net_dev_init(void)
 		init_gro_hash(&sd->backlog);
 		sd->backlog.poll = process_backlog;
 		sd->backlog.weight = weight_p;
-
 #ifdef CONFIG_XDP_LUA
-		new_state_cpu = (struct lua_state_cpu *)
-			kmalloc(sizeof(struct lua_state_cpu), GFP_ATOMIC);
-		if (!new_state_cpu)
+		lw->L = luaL_newstate();
+		WARN_ON(!lw->L);
+
+		if (!lw->L)
 			continue;
 
-		new_state_cpu->L = luaL_newstate();
-		if  (!new_state_cpu->L) {
-			kfree(new_state_cpu);
-			continue;
-		}
+		luaL_openlibs(lw->L);
+		luaL_requiref(lw->L, "data", luaopen_data, 1);
+		lua_pop(lw->L, 1);
 
-		luaL_openlibs(new_state_cpu->L);
-		luaL_requiref(new_state_cpu->L, "data", luaopen_data, 1);
-		lua_pop(new_state_cpu->L, 1);
-		new_state_cpu->cpu = i;
-
-		list_add(&new_state_cpu->list, &lua_state_cpu_list);
+		INIT_WORK(&lw->work, per_cpu_xdp_lua_install);
 #endif /* CONFIG_XDP_LUA */
 	}
 

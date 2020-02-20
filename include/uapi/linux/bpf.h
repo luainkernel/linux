@@ -2951,10 +2951,6 @@ union bpf_attr {
  *		so the memory at s can be freed or reused immediately after the
  *		function returns.
  *
- * void bpf_lua_setstate(void *ctx)
- *	Description
- *		Sets the Lua state pointer in the context struct
- *
  * int bpf_lua_toboolean(void *ctx, int index)
  *	Description
  *		Converts the Lua value at the given index to a C
@@ -3103,7 +3099,6 @@ union bpf_attr {
 	FN(lua_pushmap),		\
 	FN(lua_pushskb),		\
 	FN(lua_pushstring),		\
-	FN(lua_setstate),		\
 	FN(lua_toboolean),		\
 	FN(lua_tointeger),
 	/* #endif CONFIG_XDP_LUA */
