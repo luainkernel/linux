@@ -6061,8 +6061,8 @@ static const struct bpf_func_proto bpf_lua_putstate_proto = {
 };
 
 BPF_CALL_4(bpf_lua_tostring, struct xdp_buff *, ctx, char *, str, u32, size, int, index) {
-	if (lua_isstring(ctx->lstatecpu->L, index)) {
-		strncpy(str, lua_tostring(ctx->lstatecpu->L, index), size);
+	if (lua_isstring(ctx->xdplua->L, index)) {
+		strncpy(str, lua_tostring(ctx->xdplua->L, index), size);
 		return 1;
 	}
 
