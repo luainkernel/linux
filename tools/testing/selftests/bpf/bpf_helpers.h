@@ -173,6 +173,8 @@ static int (*bpf_lua_newpacket)(void *ctx, int offset) =
     (void *)BPF_FUNC_lua_newpacket;
 static int (*bpf_lua_tostring)(char *sslsni, u32 size, int index) =
     (void *)BPF_FUNC_lua_tostring;
+static int (*bpf_lua_type)(int index) =
+    (void *)BPF_FUNC_lua_type;
 /* #endif CONFIG_XDP_LUA */
 
 /* llvm builtin functions that eBPF C program may use to

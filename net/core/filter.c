@@ -5031,6 +5031,18 @@ static const struct bpf_func_proto bpf_lua_tostring_proto = {
 	.arg2_type	= ARG_CONST_SIZE,
 	.arg3_type	= ARG_ANYTHING,
 };
+
+BPF_LUA_CALL_1(bpf_lua_type, int, index) {
+       return lua_type(L, index);
+}
+
+static const struct bpf_func_proto bpf_lua_type_proto = {
+       .func           = bpf_lua_type,
+       .gpl_only       = false,
+       .pkt_access     = false,
+       .ret_type       = RET_INTEGER,
+       .arg1_type      = ARG_ANYTHING,
+};
 #endif /* CONFIG_XDP_LUA */
 
 bool bpf_helper_changes_pkt_data(void *func)
@@ -5280,6 +5292,8 @@ xdp_lua_func_proto(enum bpf_func_id func_id)
 		return &bpf_lua_newpacket_proto;
 	case XDP_LUA_BPF_FUNC(tostring):
 		return &bpf_lua_tostring_proto;
+	case XDP_LUA_BPF_FUNC(type):
+		return &bpf_lua_type_proto;
 	default:
 		return bpf_base_func_proto(func_id);
 	}
