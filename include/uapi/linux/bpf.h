@@ -2243,7 +2243,8 @@ union bpf_attr {
 	FN(lua_toboolean),		\
 	FN(lua_tointeger),		\
 	FN(lua_newpacket),		\
-	FN(lua_tostring),
+	FN(lua_tostring),		\
+	FN(lua_type),
 	/* #endif CONFIG_XDP_LUA */
 
 /* integer value in 'imm' field of BPF_CALL instruction selects which helper
