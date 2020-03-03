@@ -264,6 +264,8 @@ static void (*bpf_lua_removestate)(void *ctx) =
     (void *)BPF_FUNC_lua_removestate;
 static int (*bpf_lua_newpacket)(void *ctx, int offset) =
     (void *)BPF_FUNC_lua_newpacket;
+static int (*bpf_lua_type)(void *ctx, int index) =
+    (void *)BPF_FUNC_lua_type;
 /* #endif CONFIG_XDPLUA */
 
 /* llvm builtin functions that eBPF C program may use to

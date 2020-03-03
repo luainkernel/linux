@@ -6093,6 +6093,7 @@ static const struct bpf_func_proto bpf_lua_removestate_proto = {
 	.ret_type	= RET_VOID,
 	.arg1_type	= ARG_PTR_TO_CTX,
 };
+
 BPF_CALL_2(bpf_lua_newpacket, struct xdp_buff *, ctx, int, offset) {
 	if (offset + ctx->data < ctx->data_end) {
 		return lunpack_newpacket(ctx->xdplua->L, ctx->data + offset,
@@ -6109,6 +6110,19 @@ static const struct bpf_func_proto bpf_lua_newpacket_proto = {
 	.ret_type	= RET_INTEGER,
 	.arg1_type	= ARG_PTR_TO_CTX,
 	.arg2_type	= ARG_ANYTHING,
+};
+
+BPF_CALL_2(bpf_lua_type, struct xdp_buff *, ctx, int, index) {
+       return lua_type(ctx->xdplua->L, index);
+}
+
+static const struct bpf_func_proto bpf_lua_type_proto = {
+       .func           = bpf_lua_type,
+       .gpl_only       = false,
+       .pkt_access     = false,
+       .ret_type       = RET_INTEGER,
+       .arg1_type      = ARG_PTR_TO_CTX,
+       .arg2_type      = ARG_ANYTHING,
 };
 #endif /* CONFIG_XDP_LUA */
 
@@ -6219,6 +6233,8 @@ bpf_base_func_proto(enum bpf_func_id func_id)
 		return &bpf_lua_removestate_proto;
 	case BPF_FUNC_lua_newpacket:
 		return &bpf_lua_newpacket_proto;
+	case BPF_FUNC_lua_type:
+		return &bpf_lua_type_proto;
 #endif /* CONFIG_XDP_LUA */
 	default:
 		return NULL;
