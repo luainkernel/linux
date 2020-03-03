@@ -2981,6 +2981,20 @@ union bpf_attr {
  *	Return
  *		1 if the value at the given index of the Lua stack is a
  *		string; otherwise it returns 0
+ *
+ * void bpf_lua_type(void *ctx, int index)
+ *	Description
+ *		Obtains the type of the Lua value at the given index
+ *		of the Lua stack
+ *
+ *	Return
+ *		Type of the value in the given valid index,
+ *		or LUA_TNONE for a non-valid (but acceptable) index.
+ *		The types returned by lua_type are coded by the
+ *		following constants defined in lua.h: LUA_TNIL (0),
+ *		LUA_TNUMBER, LUA_TBOOLEAN, LUA_TSTRING, LUA_TTABLE,
+ *		LUA_TFUNCTION, LUA_TUSERDATA, LUA_TTHREAD, and
+ *		LUA_TLIGHTUSERDATA.
  */
 #define __BPF_FUNC_MAPPER(FN)		\
 	FN(unspec),			\
@@ -3116,7 +3130,8 @@ union bpf_attr {
 	FN(lua_toboolean),		\
 	FN(lua_tointeger),		\
 	FN(lua_newpacket),		\
-	FN(lua_tostring),
+	FN(lua_tostring),		\
+	FN(lua_type),
 	/* #endif CONFIG_XDP_LUA */
 
 /* integer value in 'imm' field of BPF_CALL instruction selects which helper
