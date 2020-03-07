@@ -175,6 +175,7 @@ always += hbm_out_kern.o
 always += hbm_edt_kern.o
 # CONFIG_XDP_LUA
 always += xdplua_map_kern.o
+always += xdp_ssl_sni_drop_ebpf.o
 
 KBUILD_HOSTCFLAGS += -I$(objtree)/usr/include
 KBUILD_HOSTCFLAGS += -I$(srctree)/tools/lib/bpf/

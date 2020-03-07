@@ -25,6 +25,7 @@
 #include "libbpf.h"
 
 #include "bpf_util.h"
+#include "xdp_ssl_parser_common.h"
 
 static int ifindex = 0;
 
@@ -118,7 +119,7 @@ int main(int argc, char *argv[])
 	char filename[256];
 	struct bpf_object *obj;
 	int opt, prog_fd;
-	int rx_cnt_map_fd;
+	int rx_cnt_map_fd, sslsni_map_fd;
 	int detach = 0, attach_lua = 0, attach_ebpf = 0, monitor = 0;
 	char *lua_prog = NULL;
 	const char *optstr = "s:p:i:dm";
@@ -176,6 +177,9 @@ int main(int argc, char *argv[])
 
 	if (attach_ebpf) {
 		prog_load_attr.file = filename;
+		struct sslsni_wrapper fmt = {};
+		char sslsni[] = "test.com";
+		unsigned int key = 1;
 
 		if (bpf_prog_load_xattr(&prog_load_attr, &obj, &prog_fd))
 			return 1;
@@ -188,6 +192,10 @@ int main(int argc, char *argv[])
 		if (do_attach_ebpf(ifindex, prog_fd, lua_filename) < 0)
 			return 1;
 
+		sslsni_map_fd = bpf_object__find_map_fd_by_name(obj, "blocked_snis");
+
+		strcpy(fmt.sslsni, sslsni);
+		bpf_map_update_elem(sslsni_map_fd, &key, &fmt, BPF_ANY);
 	}
 
 	if (attach_lua) {
