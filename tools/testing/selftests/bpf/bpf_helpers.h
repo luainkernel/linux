@@ -229,7 +229,7 @@ static int (*bpf_sk_storage_delete)(void *map, struct bpf_sock *sk) =
 	(void *)BPF_FUNC_sk_storage_delete;
 static int (*bpf_send_signal)(unsigned sig) = (void *)BPF_FUNC_send_signal;
 
-/* #fidef CONFIG_XDPLUA */
+/* #ifdef CONFIG_XDPLUA */
 static int (*bpf_lua_dataref)(void *ctx, int offset) =
     (void *)BPF_FUNC_lua_dataref;
 static void (*bpf_lua_dataunref)(void *ctx, int data_ref) =
@@ -258,10 +258,6 @@ static int (*bpf_lua_toboolean)(void *ctx, int index) =
     (void *)BPF_FUNC_lua_toboolean;
 static int (*bpf_lua_tointeger)(void *ctx, int index) =
     (void *)BPF_FUNC_lua_tointeger;
-static void (*bpf_lua_putstate)(void *ctx) =
-    (void *)BPF_FUNC_lua_putstate;
-static void (*bpf_lua_removestate)(void *ctx) =
-    (void *)BPF_FUNC_lua_removestate;
 static int (*bpf_lua_newpacket)(void *ctx, int offset) =
     (void *)BPF_FUNC_lua_newpacket;
 static int (*bpf_lua_type)(void *ctx, int index) =

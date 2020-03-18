@@ -66,7 +66,8 @@ struct xdp_rxq_info {
 #ifdef CONFIG_XDP_LUA
 struct xdplua {
 	struct lua_State	*L;
-	spinlock_t		*lock;
+	spinlock_t		lock;
+	bool			used_lua;
 };
 
 DECLARE_PER_CPU(struct xdplua, xdplua_per_cpu);
@@ -81,7 +82,7 @@ struct xdp_buff {
 	struct xdp_rxq_info *rxq;
 #ifdef CONFIG_XDP_LUA
 	struct sk_buff *skb;
-	struct xdplua *xdplua;
+	struct lua_State *L;
 #endif /* CONFIG_XDP_LUA */
 };
 

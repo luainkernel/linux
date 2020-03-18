@@ -159,9 +159,6 @@
 
 static DEFINE_SPINLOCK(ptype_lock);
 static DEFINE_SPINLOCK(offload_lock);
-#ifdef CONFIG_XDP_LUA
-static DEFINE_PER_CPU(spinlock_t, lua_state_lock);
-#endif
 struct list_head ptype_base[PTYPE_HASH_SIZE] __read_mostly;
 struct list_head ptype_all __read_mostly;	/* Taps */
 static struct list_head offload_base __read_mostly;
@@ -4337,6 +4334,9 @@ static u32 netif_receive_generic_xdp(struct sk_buff *skb,
 	bool orig_bcast;
 	int hlen, off;
 	u32 mac_len;
+#ifdef CONFIG_XDP_LUA
+	struct xdplua *sc;
+#endif
 
 	/* Reinjected packets coming from act_mirred or similar should
 	 * not get XDP generic processing.
@@ -4382,10 +4382,19 @@ static u32 netif_receive_generic_xdp(struct sk_buff *skb,
 	rxqueue = netif_get_rxqueue(skb);
 	xdp->rxq = &rxqueue->xdp_rxq;
 #ifdef CONFIG_XDP_LUA
+	sc = this_cpu_ptr(&xdplua_per_cpu);
 	xdp->skb = skb;
+	xdp->L = sc->L;
 #endif /* CONFIG_XDP_LUA */
 
 	act = bpf_prog_run_xdp(xdp_prog, xdp);
+
+#ifdef CONFIG_XDP_LUA
+	if (sc->used_lua) {
+		sc->used_lua = false;
+		spin_unlock(&sc->lock);
+	}
+#endif /* CONFIG_XDP_LUA */
 
 	/* check if bpf_xdp_adjust_head was used */
 	off = xdp->data - orig_data;
@@ -5206,15 +5215,15 @@ int generic_xdp_lua_install_prog(char *lua_prog)
 
 	for_each_possible_cpu(i) {
 		sc = per_cpu_ptr(&xdplua_per_cpu, i);
-		spin_lock_bh(sc->lock);
+		spin_lock_bh(&sc->lock);
 		if (luaL_dostring(sc->L, lua_prog)) {
 			pr_err(KERN_INFO "error: %s\nOn cpu: %d\n",
 				lua_tostring(sc->L, -1), i);
-			spin_unlock_bh(sc->lock);
+			spin_unlock_bh(&sc->lock);
 			return -EINVAL;
 		}
 
-		spin_unlock_bh(sc->lock);
+		spin_unlock_bh(&sc->lock);
 	}
 	return 0;
 }
@@ -9884,15 +9893,14 @@ static int __init net_dev_init(void)
 		sd->backlog.weight = weight_p;
 #ifdef CONFIG_XDP_LUA
 		xdplua->L = luaL_newstate();
-		if  (!xdplua->L) {
-			kfree(xdplua);
+		WARN_ON(!xdplua->L);
+
+		if (!xdplua->L)
 			continue;
-		}
 
 		luaL_openlibs(xdplua->L);
 		luaL_requiref(xdplua->L, "data", luaopen_data, 1);
 		lua_pop(xdplua->L, 1);
-		xdplua->lock = per_cpu_ptr(&lua_state_lock, i);
 #endif /* CONFIG_XDP_LUA */
 	}
 
