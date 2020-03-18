@@ -27,13 +27,11 @@ int xdp_lua_test_map_prog(struct xdp_md *ctx)
 	char lookupname[] = "lookup";
 	char updatename[] = "update";
 
-	bpf_lua_putstate(ctx);
 	bpf_lua_pushmap(ctx, &test_map);
 	bpf_lua_pcall(ctx, updatename, 1, 0);
 
 	bpf_lua_pushmap(ctx, &test_map);
 	bpf_lua_pcall(ctx, lookupname, 1, 0);
-	bpf_lua_removestate(ctx);
 
 	return XDP_PASS;
 }
