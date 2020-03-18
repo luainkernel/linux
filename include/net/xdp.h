@@ -64,13 +64,17 @@ struct xdp_rxq_info {
 } ____cacheline_aligned; /* perf critical, avoid false-sharing */
 
 #ifdef CONFIG_XDP_LUA
-struct xdplua {
+struct xdplua_create_work {
+	char				*lua_script;
 	struct lua_State	*L;
-	spinlock_t		*lock;
+	struct work_struct	work;
+	spinlock_t		lock;
+	bool			init;
 };
 
-DECLARE_PER_CPU(struct xdplua, xdplua_per_cpu);
+DECLARE_PER_CPU(struct xdplua_create_work, luaworks);
 #endif /* CONFIG_XDP_LUA */
+
 
 struct xdp_buff {
 	void *data;
@@ -81,7 +85,7 @@ struct xdp_buff {
 	struct xdp_rxq_info *rxq;
 #ifdef CONFIG_XDP_LUA
 	struct sk_buff *skb;
-	struct xdplua *xdplua;
+	struct lua_State *L;
 #endif /* CONFIG_XDP_LUA */
 };
 

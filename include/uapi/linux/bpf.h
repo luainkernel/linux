@@ -2839,8 +2839,6 @@ union bpf_attr {
 	FN(lua_pushstring),		\
 	FN(lua_toboolean),		\
 	FN(lua_tointeger),		\
-	FN(lua_putstate),		\
-	FN(lua_removestate),		\
 	FN(lua_newpacket),		\
 	FN(lua_type),
 	/* #endif CONFIG_XDP_LUA */
