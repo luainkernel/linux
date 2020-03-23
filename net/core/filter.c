@@ -5913,7 +5913,7 @@ BPF_CALL_4(bpf_lua_pcall, struct xdp_buff *, ctx, char *, funcname,
 
 	verify_and_lock();
 
-	base = lua_gettop(ctx->L) - num_args;
+	base = lua_gettop(ctx->L) - num_args + num_rets;
 	if (lua_getglobal(ctx->L, funcname) != LUA_TFUNCTION) {
 		pr_err("function %s not found\n", funcname);
 		num_rets = 0;
