@@ -57,7 +57,8 @@ static char *extract_lua_prog(const char *path)
 
 	lua_prog = (char *) malloc(prog_size + 1);
 	memset(lua_prog, 0, prog_size + 1);
-	if (fread(lua_prog, 1, prog_size, f) < 0) {
+	size_t read = fread(lua_prog, 1, prog_size, f);
+	if (read < 0) {
 		perror("unable to read lua file");
 		return NULL;
 	}
