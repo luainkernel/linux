@@ -234,7 +234,7 @@ static int (*bpf_lua_dataref)(void *ctx, int offset) =
     (void *)BPF_FUNC_lua_dataref;
 static void (*bpf_lua_dataunref)(void *ctx, int data_ref) =
     (void *)BPF_FUNC_lua_dataunref;
-static void (*bpf_lua_pcall)(void *ctx, char *funcname, int num_args,
+static int (*bpf_lua_pcall)(void *ctx, char *funcname, int num_args,
 				   int num_rets) =
     (void *) BPF_FUNC_lua_pcall;
 static int (*bpf_lua_tostring)(void *ctx, char *sslsni, u32 size, int index) =

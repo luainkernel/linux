@@ -5232,8 +5232,7 @@ int generic_xdp_lua_install_prog(char *lua_script)
 
 	for_each_possible_cpu(cpu) {
 		lw = per_cpu_ptr(&luaworks, cpu);
-		lw->lua_script = lua_script;
-		INIT_WORK(&lw->work, per_cpu_xdp_lua_install);
+		strcpy(lw->lua_script, lua_script);
 		schedule_work_on(cpu, &lw->work);
 	}
 	return 0;
@@ -9914,6 +9913,8 @@ static int __init net_dev_init(void)
 		luaL_openlibs(lw->L);
 		luaL_requiref(lw->L, "data", luaopen_data, 1);
 		lua_pop(lw->L, 1);
+
+		INIT_WORK(&lw->work, per_cpu_xdp_lua_install);
 #endif /* CONFIG_XDP_LUA */
 	}
 

@@ -65,7 +65,7 @@ struct xdp_rxq_info {
 
 #ifdef CONFIG_XDP_LUA
 struct xdplua_create_work {
-	char				*lua_script;
+	char				lua_script[8192];
 	struct lua_State	*L;
 	struct work_struct	work;
 	spinlock_t		lock;
