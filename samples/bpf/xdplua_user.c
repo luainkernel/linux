@@ -59,6 +59,7 @@ static char *extract_lua_prog(const char *path)
 	memset(lua_prog, 0, prog_size + 1);
 	if (fread(lua_prog, 1, prog_size, f) < 0) {
 		perror("unable to read lua file");
+		free(lua_prog);
 		return NULL;
 	}
 
