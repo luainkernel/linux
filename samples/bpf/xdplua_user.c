@@ -26,16 +26,20 @@
 
 #include "bpf_util.h"
 
+#define MAXSCRIPTLEN 8192
+#define MAXFILENAMELEN 256
+
 static int ifindex = 0;
 
 static void usage(const char *prog) {
 	fprintf(stderr, "usage: %s [OPTS]\n"
 		"\nOPTS:\n"
 		"    -d    detach program\n"
-		"    -s    lua script path\n"
+		"    -f    lua script path\n"
 		"    -p    eBPF program path\n"
 		"    -i    iface\n"
-		"    -m    monitor\n",
+		"    -m    monitor\n"
+		"    -s    lua script\n",
 		prog);
 }
 
@@ -78,13 +82,13 @@ static int do_attach_ebpf(int idx, int fd, const char *name)
 	return err;
 }
 
-static int do_attach_lua(const char *name, char *lua_prog)
+static int do_attach_lua(char *lua_prog)
 {
 	int err;
 
 	err = bpf_set_link_xdp_lua_prog(lua_prog);
 	if (err < 0)
-		fprintf(stderr, "ERROR: failed to attach lua script to %s\n", name);
+		fprintf(stderr, "ERROR: failed to attach lua script %d\n", err);
 
 	return err;
 }
@@ -114,23 +118,24 @@ static void poll(int map_fd, int interval) {
 int main(int argc, char *argv[])
 {
 	struct rlimit r = {RLIM_INFINITY, RLIM_INFINITY};
-	char lua_filename[256];
-	char filename[256];
+	char lua_filename[MAXFILENAMELEN];
+	char filename[MAXFILENAMELEN];
+	char lua_script[MAXSCRIPTLEN];
 	struct bpf_object *obj;
 	int opt, prog_fd;
 	int rx_cnt_map_fd;
-	int detach = 0, attach_lua = 0, attach_ebpf = 0, monitor = 0;
+	int detach = 0, attach_lua = 0, attach_ebpf = 0, monitor = 0, attach_script = 0;
 	char *lua_prog = NULL;
-	const char *optstr = "s:p:i:dm";
+	const char *optstr = "f:p:i:dms:";
 	struct bpf_prog_load_attr prog_load_attr = {
 		.prog_type	= BPF_PROG_TYPE_XDP,
 	};
 
-	memset(lua_filename, 0, 256);
-	memset(filename, 0, 256);
+	memset(lua_filename, 0, MAXFILENAMELEN);
+	memset(filename, 0, MAXFILENAMELEN);
 	while ((opt = getopt(argc, argv, optstr)) != -1) {
 		switch (opt) {
-			case 's':
+			case 'f':
 				snprintf(lua_filename, sizeof(lua_filename),
 						"%s", optarg);
 				attach_lua = 1;
@@ -148,6 +153,11 @@ int main(int argc, char *argv[])
 				break;
 			case 'm':
 				monitor = 1;
+				break;
+			case 's':
+				snprintf(lua_script, sizeof(lua_script),
+						"%s", optarg);
+				attach_script = 1;
 				break;
 			default:
 				usage(basename(argv[0]));
@@ -195,13 +205,17 @@ int main(int argc, char *argv[])
 		if (!lua_prog)
 			return 1;
 
-		if (do_attach_lua(lua_filename, lua_prog) < 0) {
+		if (do_attach_lua(lua_prog) < 0) {
 			free(lua_prog);
 			return 1;
 		}
 
 		free(lua_prog);
 	}
+
+	if (attach_script)
+		if (do_attach_lua(lua_script) < 0)
+			return 1;
 
 	if (monitor) {
 		rx_cnt_map_fd = bpf_object__find_map_fd_by_name(obj, "rx_cnt");

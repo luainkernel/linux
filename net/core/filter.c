@@ -5913,22 +5913,22 @@ BPF_CALL_4(bpf_lua_pcall, struct xdp_buff *, ctx, char *, funcname,
 
 	verify_and_lock();
 
-	base = lua_gettop(ctx->L) - num_args;
+	base = lua_gettop(ctx->L) - num_args + 1;
 	if (lua_getglobal(ctx->L, funcname) != LUA_TFUNCTION) {
 		pr_err("function %s not found\n", funcname);
 		num_rets = 0;
 		goto clean_state;
 	}
 
-	lua_insert(ctx->L, 1);
+	lua_insert(ctx->L, base);
 	if (lua_pcall(ctx->L, num_args, num_rets, 0)) {
-		pr_err("%s\n", lua_tostring(ctx->L, -1));
+		pr_err("error: %s\n", lua_tostring(ctx->L, -1));
 		num_rets = 0;
 		goto clean_state;
 	}
 
 clean_state:
-	base += num_rets;
+	base += num_rets + 1;
 	lua_settop(ctx->L, base);
 	return num_rets;
 }
