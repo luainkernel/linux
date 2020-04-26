@@ -176,6 +176,7 @@ always-y += hbm_edt_kern.o
 always-y += xdpsock_kern.o
 # CONFIG_XDP_LUA
 always-y += xdplua_map_kern.o
+always-y += xdplua_cookie_kern.o
 
 ifeq ($(ARCH), arm)
 # Strip all except -D__LINUX_ARM_ARCH__ option needed to handle linux
