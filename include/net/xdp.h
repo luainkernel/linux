@@ -73,6 +73,9 @@ struct xdplua_create_work {
 };
 
 DECLARE_PER_CPU(struct xdplua_create_work, luaworks);
+
+#define LUA_MAXINSNS 1e6
+
 #endif /* CONFIG_XDP_LUA */
 
 

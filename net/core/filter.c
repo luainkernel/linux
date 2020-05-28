@@ -76,6 +76,7 @@
 
 #ifdef CONFIG_XDP_LUA
 #include <lua.h>
+#include <lauxlib.h>
 #include <luadata.h>
 #include <luaunpack.h>
 #endif /* CONFIG_XDP_LUA */
@@ -5904,6 +5905,10 @@ static const struct bpf_func_proto bpf_lua_dataunref_proto = {
 	.arg2_type	= ARG_ANYTHING,
 };
 
+static void lstop(struct lua_State *L, struct lua_Debug *ar) {
+	luaL_error(L, "instruction limit exceeded");
+}
+
 BPF_CALL_4(bpf_lua_pcall, struct xdp_buff *, ctx, char *, funcname,
 			int, num_args, int, num_rets) {
 	int base;
@@ -5917,14 +5922,18 @@ BPF_CALL_4(bpf_lua_pcall, struct xdp_buff *, ctx, char *, funcname,
 		goto clean_state;
 	}
 
+	lua_sethook(ctx->L, lstop, LUA_MASKCOUNT, LUA_MAXINSNS);
 	lua_insert(ctx->L, base + 1);
 	if (lua_pcall(ctx->L, num_args, num_rets, 0)) {
 		pr_err("%s\n", lua_tostring(ctx->L, -1));
 		num_rets = 0;
-		goto clean_state;
+		goto clean_hook;
 	}
 
 	base += num_rets;
+
+clean_hook:
+	lua_sethook(ctx->L, NULL, 0, 0);
 
 clean_state:
 	lua_settop(ctx->L, base);

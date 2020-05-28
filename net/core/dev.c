@@ -5395,16 +5395,31 @@ static int generic_xdp_install(struct net_device *dev, struct netdev_bpf *xdp)
 
 #ifdef CONFIG_XDP_LUA
 
+static void lstop(struct lua_State *L, struct lua_Debug *ar) {
+	luaL_error(L, "instruction limit exceeded");
+}
+
 static void per_cpu_xdp_lua_install(struct work_struct *w) {
 	int this_cpu = smp_processor_id();
 	struct xdplua_create_work *lw =
 		container_of(w, struct xdplua_create_work, work);
 
 	spin_lock_bh(&lw->lock);
-	if (luaL_dostring(lw->L, lw->lua_script)) {
-		pr_err(KERN_INFO "error: %s\nOn cpu: %d\n",
+	if (luaL_loadstring(lw->L, lw->lua_script)) {
+		pr_err(KERN_INFO "Error on script loading: %s\nOn cpu: %d\n",
+			lua_tostring(lw->L, -1), this_cpu);
+		goto unlock;
+	}
+
+	lua_sethook(lw->L, lstop, LUA_MASKCOUNT, LUA_MAXINSNS);
+	if (lua_pcall(lw->L, 0, LUA_MULTRET, 0)) {
+		pr_err(KERN_INFO "Error on script execution: %s\nOn cpu: %d\n",
 			lua_tostring(lw->L, -1), this_cpu);
 	}
+
+	lua_sethook(lw->L, NULL, 0, 0);
+
+unlock:
 	spin_unlock_bh(&lw->lock);
 }
 
