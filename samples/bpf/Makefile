@@ -194,6 +194,27 @@ HOSTLDLIBS_map_perf_test	+= -lrt
 HOSTLDLIBS_test_overhead	+= -lrt
 HOSTLDLIBS_xdpsock		+= -pthread
 
+# Tracker build info
+ifneq ($(BPF_SAMPLES_PATH),/)
+version      := $(file < $(BPF_SAMPLES_PATH)/version.txt)
+COMMIT       := $(strip $(word 3, $(version)))
+COMMITS_PAST := $(strip $(word 2, $(version)))
+DIRTY        := $(strip $(word 4, $(version)))
+ifneq ($(COMMITS_PAST), 0)
+BUILD_INFO_COMMITS := .$(COMMITS_PAST)
+endif
+ifneq ($(DIRTY),)
+BUILD_INFO_DIRTY := +
+endif
+
+export BUILD_TAG := $(strip $(word 1, $(version)))
+export BUILD_INFO := $(COMMIT)$(BUILD_INFO_COMMITS)$(BUILD_INFO_DIRTY)
+
+HOSTCFLAGS_tracker_user.o += -DVERSION_BUILD_MACHINE=\""$(shell echo `whoami`@`hostname`)"\"
+HOSTCFLAGS_tracker_user.o += -DVERSION_TAG=\""$(BUILD_TAG)"\"
+HOSTCFLAGS_tracker_user.o += -DVERSION_INFO=\""$(BUILD_INFO)"\"
+endif
+
 # Allows pointing LLC/CLANG to a LLVM backend with bpf support, redefine on cmdline:
 #  make samples/bpf/ LLC=~/git/llvm/build/bin/llc CLANG=~/git/llvm/build/bin/clang
 LLC ?= llc
