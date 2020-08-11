@@ -17,35 +17,17 @@ local function ip2int(ip)
 	return (oct4 << 24) + (oct3 << 16) + (oct2 << 8) + oct1
 end
 
-function loadcookieport(ip, port, cookie)
-	local ip = ip2int(ip)
-
-	if not cookies[ip] then
-		cookies[ip] = {}
-	end
-
-	cookies[ip][port] = cookie
-end
-
 function loadcookie(ip, cookie)
 	cookies[ip2int(ip)] = cookie
 end
 
-function checkcookieport(pkt, ip, port)
-	local cookiepkt = tonumber(string.match(tostring(pkt), "Cookie:%s__xdp=(.-)\r\n"))
+function checkcookie(pkt, ip)
+	local pattern = 'Cookie:%s*=__xdp=(%d+)%s*'
+	local cookiepkt = tonumber(string.match(tostring(pkt), pattern))
+
 	if not cookies[ip] then
 		return true
 	end
-
-	if not cookies[ip][port] then
-		return true
-	end
-
-	return cookies[ip][port] == cookiepkt and true or false
-end
-
-function checkcookie(pkt, ip)
-	local cookiepkt = tonumber(string.match(tostring(pkt), "Cookie:%s__xdp=(.-)\r\n"))
 
 	return cookies[ip] == cookiepkt and true or false
 end
