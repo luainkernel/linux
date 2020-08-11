@@ -38,7 +38,9 @@ static void usage(const char *prog) {
 		"    -p    eBPF program path\n"
 		"    -i    iface\n"
 		"    -m    monitor\n"
-		"    -s    lua script\n",
+		"    -s    lua script\n"
+		"    -I    Interval\n"
+		"    -D    Duration\n",
 		prog);
 }
 
@@ -103,13 +105,19 @@ static int do_detach(int idx, const char *name)
 	return err;
 }
 
-static void poll(int map_fd, int interval) {
-	long cnt;
+static void poll(int map_fd, int interval, int duration) {
+	unsigned int nr_cpus = bpf_num_possible_cpus();
+	long cnts[nr_cpus];
 	unsigned int key = 0;
 
-	while(1) {
-		bpf_map_lookup_elem(map_fd, &key, &cnt);
-		printf("pkt count: %lu\n", cnt);
+	for (int i = 0; i < duration; i++) {
+		unsigned long cnt = 0;
+		int i;
+		bpf_map_lookup_elem(map_fd, &key, cnts);
+		for (i = 0; i < nr_cpus; ++i) {
+			cnt += cnts[i];
+		}
+		printf("%lu\n", cnt);
 		sleep(interval);
 	}
 }
@@ -123,9 +131,11 @@ int main(int argc, char *argv[])
 	struct bpf_object *obj;
 	int opt, prog_fd;
 	int rx_cnt_map_fd;
-	int detach = 0, attach_lua = 0, attach_ebpf = 0, monitor = 0, attach_script = 0;
+	int detach = 0, attach_lua = 0, attach_ebpf = 0, monitor = 0, attach_script = 0,
+		interval = 1, duration = 1;
+
 	char *lua_prog = NULL;
-	const char *optstr = "f:p:i:dms:";
+	const char *optstr = "f:p:i:dms:I:D:";
 	struct bpf_prog_load_attr prog_load_attr = {
 		.prog_type	= BPF_PROG_TYPE_XDP,
 	};
@@ -158,11 +168,18 @@ int main(int argc, char *argv[])
 						"%s", optarg);
 				attach_script = 1;
 				break;
+			case 'I':
+				interval = atoi(optarg);
+				break;
+			case 'D':
+				duration = atoi(optarg);
+				break;
 			default:
 				usage(basename(argv[0]));
 				return 1;
 		}
 	}
+
 
 	if (attach_ebpf || detach) {
 		if (!ifindex) {
@@ -219,7 +236,7 @@ int main(int argc, char *argv[])
 	if (monitor) {
 		rx_cnt_map_fd = bpf_object__find_map_fd_by_name(obj, "rx_cnt");
 
-		poll(rx_cnt_map_fd, 1);
+		poll(rx_cnt_map_fd, interval, duration);
 	}
 	return 0;
 }
