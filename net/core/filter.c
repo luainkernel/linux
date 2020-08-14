@@ -5999,7 +5999,7 @@ static const struct bpf_func_proto bpf_lua_pushmap_proto = {
 	.pkt_access	= false,
 	.ret_type	= RET_VOID,
 	.arg1_type	= ARG_PTR_TO_CTX,
-	.arg2_type	= ARG_ANYTHING,
+	.arg2_type	= ARG_CONST_MAP_PTR,
 };
 
 BPF_CALL_3(bpf_lua_pushlstring, struct xdp_buff *, ctx, const char *, str, size_t, len) {
