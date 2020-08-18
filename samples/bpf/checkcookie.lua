@@ -22,6 +22,7 @@ function loadcookie(ip, cookie)
 end
 
 function checkcookie(pkt, ip)
+	print('Olha aqui, entrei aqui')
 	local pattern = 'Cookie:%s*=__xdp=(%d+)%s*'
 	local cookiepkt = tonumber(string.match(tostring(pkt), pattern))
 
