@@ -10521,7 +10521,7 @@ static int __init net_dev_init(void)
 
 #ifdef CONFIG_XDP_LUA
 	if (lunatik_init())
-		goto out;
+		pr_err("Failed to initalize lunatik\n");
 #endif
 
 	INIT_LIST_HEAD(&ptype_all);
