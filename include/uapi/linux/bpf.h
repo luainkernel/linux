@@ -2977,7 +2977,7 @@ union bpf_attr {
  *		1 if the value at the given index of the Lua stack is a
  *		string; otherwise it returns 0
  *
- * void bpf_lua_type(void *ctx, int index)
+ * int bpf_lua_type(void *ctx, int index)
  *	Description
  *		Obtains the type of the Lua value at the given index
  *		of the Lua stack
