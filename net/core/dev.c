@@ -69,7 +69,7 @@
  */
 
 #ifdef CONFIG_XDP_LUA
-#include <lua.h>
+#include <lunatik.h>
 #include <lauxlib.h>
 #include <lstate.h>
 #include <lualib.h>
@@ -154,6 +154,9 @@
 #include "net-sysfs.h"
 
 #define MAX_GRO_SKBS 8
+#define DEFAULT_XDP_MAX_ALLOC 100000
+
+#define NAME_MAX_SIZE 8
 
 /* This should be increased if a protocol with a bigger head is added. */
 #define GRO_MAX_HEAD (MAX_HEADER + 128)
@@ -4574,7 +4577,7 @@ static u32 netif_receive_generic_xdp(struct sk_buff *skb,
 	lw = this_cpu_ptr(&luaworks);
 
 	xdp->skb = skb;
-	xdp->L = lw->L;
+	xdp->state = lw->state;
 #endif /* CONFIG_XDP_LUA */
 
 	act = bpf_prog_run_xdp(xdp_prog, xdp);
@@ -5401,25 +5404,13 @@ static void per_cpu_xdp_lua_install(struct work_struct *w) {
 		container_of(w, struct xdplua_create_work, work);
 
 	spin_lock_bh(&lw->lock);
-	if (luaL_dostring(lw->L, lw->lua_script)) {
+	if (luaL_dostring(lw->state->L, lw->state->code_buffer)) {
 		pr_err(KERN_INFO "error: %s\nOn cpu: %d\n",
-			lua_tostring(lw->L, -1), this_cpu);
+			lua_tostring(lw->state->L, -1), this_cpu);
 	}
 	spin_unlock_bh(&lw->lock);
 }
 
-int generic_xdp_lua_install_prog(char *lua_script)
-{
-	int cpu;
-	struct xdplua_create_work *lw;
-
-	for_each_possible_cpu(cpu) {
-		lw = per_cpu_ptr(&luaworks, cpu);
-		strcpy(lw->lua_script, lua_script);
-		schedule_work_on(cpu, &lw->work);
-	}
-	return 0;
-}
 #endif /* CONFIG_XDP_LUA */
 
 static int netif_receive_skb_internal(struct sk_buff *skb)
@@ -10518,6 +10509,7 @@ static struct pernet_operations __net_initdata default_device_ops = {
 static int __init net_dev_init(void)
 {
 	int i, rc = -ENOMEM;
+	char name[NAME_MAX_SIZE];
 
 	BUG_ON(!dev_boot_phase);
 
@@ -10526,6 +10518,11 @@ static int __init net_dev_init(void)
 
 	if (netdev_kobject_init())
 		goto out;
+
+#ifdef CONFIG_XDP_LUA
+	if (lunatik_init())
+		pr_err("Failed to initalize lunatik\n");
+#endif
 
 	INIT_LIST_HEAD(&ptype_all);
 	for (i = 0; i < PTYPE_HASH_SIZE; i++)
@@ -10566,15 +10563,16 @@ static int __init net_dev_init(void)
 		sd->backlog.poll = process_backlog;
 		sd->backlog.weight = weight_p;
 #ifdef CONFIG_XDP_LUA
-		lw->L = luaL_newstate();
-		WARN_ON(!lw->L);
+		snprintf(name, NAME_MAX_SIZE, "CPU %u", i);
+		lw->state = lunatik_newstate(name, DEFAULT_XDP_MAX_ALLOC);
+		WARN_ON(!lw->state);
 
-		if (!lw->L)
+		if (!lw->state)
 			continue;
 
-		luaL_openlibs(lw->L);
-		luaL_requiref(lw->L, "data", luaopen_data, 1);
-		lua_pop(lw->L, 1);
+		luaL_openlibs(lw->state->L);
+		luaL_requiref(lw->state->L, "data", luaopen_data, 1);
+		lua_pop(lw->state->L, 1);
 
 		INIT_WORK(&lw->work, per_cpu_xdp_lua_install);
 #endif /* CONFIG_XDP_LUA */

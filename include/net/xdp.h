@@ -64,9 +64,12 @@ struct xdp_rxq_info {
 } ____cacheline_aligned; /* perf critical, avoid false-sharing */
 
 #ifdef CONFIG_XDP_LUA
+
+typedef struct lunatik_state lunatik_State;
+
 struct xdplua_create_work {
 	char				lua_script[8192];
-	struct lua_State	*L;
+	lunatik_State *state;
 	struct work_struct	work;
 	spinlock_t		lock;
 	bool			init;
@@ -85,7 +88,7 @@ struct xdp_buff {
 	struct xdp_rxq_info *rxq;
 #ifdef CONFIG_XDP_LUA
 	struct sk_buff *skb;
-	struct lua_State *L;
+	lunatik_State *state;
 #endif /* CONFIG_XDP_LUA */
 };
 

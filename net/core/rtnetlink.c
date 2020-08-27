@@ -2810,20 +2810,6 @@ static int do_setlink(const struct sk_buff *skb,
 			status |= DO_SETLINK_NOTIFY;
 		}
 
-#ifdef CONFIG_XDP_LUA
-		if (xdp[IFLA_XDP_LUA_PROG]) {
-			char *lua_prog = nla_data(xdp[IFLA_XDP_LUA_PROG]);
-			if (!lua_prog) {
-				err = -EINVAL;
-				goto errout;
-			}
-
-			err = generic_xdp_lua_install_prog(lua_prog);
-			if (err)
-				goto errout;
-		}
-#endif  /* CONFIG_XDP_LUA */
-
 	}
 
 errout:
