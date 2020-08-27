@@ -643,7 +643,7 @@ cleanup:
 }
 
 /* #ifdef CONFIG_XDPLUA */
-int bpf_set_link_xdp_lua_prog(char *lua_prog, __u32 flags)
+int bpf_set_link_xdp_lua_prog(char *lua_prog)
 {
 	struct sockaddr_nl sa;
 	int sock, seq = 0, len, ret = -1;
@@ -714,15 +714,6 @@ int bpf_set_link_xdp_lua_prog(char *lua_prog, __u32 flags)
 		goto cleanup;
 	}
 	nla->nla_len += nla_xdp->nla_len;
-
-	/* if user passed in any flags, add those too */
-	if (flags) {
-		nla_xdp = (struct nlattr *)((char *)nla + nla->nla_len);
-		nla_xdp->nla_type = IFLA_XDP_FLAGS;
-		nla_xdp->nla_len = NLA_HDRLEN + sizeof(flags);
-		memcpy((char *)nla_xdp + NLA_HDRLEN, &flags, sizeof(flags));
-		nla->nla_len += nla_xdp->nla_len;
-	}
 
 	req.nh.nlmsg_len += NLA_ALIGN(nla->nla_len);
 
