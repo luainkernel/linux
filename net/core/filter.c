@@ -4859,15 +4859,16 @@ BPF_CALL_4(bpf_lua_pcall, struct xdp_buff *, ctx, char *, funcname,
 		goto clean_state;
 	}
 
-	lua_insert(ctx->L, 1);
+	lua_insert(ctx->L, base + 1);
 	if (lua_pcall(ctx->L, num_args, num_rets, 0)) {
 		pr_err("%s\n", lua_tostring(ctx->L, -1));
 		num_rets = 0;
 		goto clean_state;
 	}
 
-clean_state:
 	base += num_rets;
+
+clean_state:
 	lua_settop(ctx->L, base);
 	return num_rets;
 }
