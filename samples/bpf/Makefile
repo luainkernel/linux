@@ -176,6 +176,9 @@ always-y += hbm_edt_kern.o
 always-y += xdpsock_kern.o
 # CONFIG_XDP_LUA
 always-y += xdplua_map_kern.o
+always-y += xdp_ssl_sni_drop_ebpf.o
+always-y += xdp_ssl_sni_drop_lua.o
+always-y += xdp_ssl_sni_drop_all.o
 always-y += xdplua_cookie_kern.o
 
 ifeq ($(ARCH), arm)
@@ -217,6 +220,7 @@ LLC ?= llc
 CLANG ?= clang
 LLVM_OBJCOPY ?= llvm-objcopy
 BTF_PAHOLE ?= pahole
+LLVM_READELF ?= llvm-readelf
 
 # Detect that we're cross compiling and use the cross compiler
 ifdef CROSS_COMPILE
@@ -239,7 +243,7 @@ BTF_PAHOLE_PROBE := $(shell $(BTF_PAHOLE) --help 2>&1 | grep BTF)
 BTF_OBJCOPY_PROBE := $(shell $(LLVM_OBJCOPY) --help 2>&1 | grep -i 'usage.*llvm')
 BTF_LLVM_PROBE := $(shell echo "int main() { return 0; }" | \
 			  $(CLANG) -target bpf -O2 -g -c -x c - -o ./llvm_btf_verify.o; \
-			  readelf -S ./llvm_btf_verify.o | grep BTF; \
+			  $(LLVM_READELF)  -S ./llvm_btf_verify.o | grep BTF; \
 			  /bin/rm -f ./llvm_btf_verify.o)
 
 BPF_EXTRA_CFLAGS += -fno-stack-protector
