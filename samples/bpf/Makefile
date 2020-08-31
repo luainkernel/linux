@@ -178,6 +178,9 @@ always-y += hbm_edt_kern.o
 always-y += xdpsock_kern.o
 # CONFIG_XDP_LUA
 always-y += xdplua_map_kern.o
+always-y += xdp_ssl_sni_drop_all.o
+always-y += xdp_ssl_sni_drop_ebpf.o
+always-y += xdp_ssl_sni_drop_lua.o
 
 ifeq ($(ARCH), arm)
 # Strip all except -D__LINUX_ARM_ARCH__ option needed to handle linux
@@ -221,6 +224,7 @@ OPT ?= opt
 LLVM_DIS ?= llvm-dis
 LLVM_OBJCOPY ?= llvm-objcopy
 BTF_PAHOLE ?= pahole
+LLVM_READELF ?= llvm-readelf
 
 # Detect that we're cross compiling and use the cross compiler
 ifdef CROSS_COMPILE

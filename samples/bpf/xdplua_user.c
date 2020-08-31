@@ -20,8 +20,8 @@
 #include <sys/resource.h>
 #include <net/if.h>
 
+#include <bpf/bpf.h>
 #include "bpf/libbpf.h"
-#include "bpf/bpf.h"
 
 #include "bpf_util.h"
 
@@ -31,10 +31,13 @@ static void usage(const char *prog) {
 	fprintf(stderr, "usage: %s [OPTS]\n"
 		"\nOPTS:\n"
 		"    -d    detach program\n"
-		"    -s    lua script path\n"
+		"    -f    lua script path\n"
 		"    -p    eBPF program path\n"
 		"    -i    iface\n"
-		"    -m    monitor\n",
+		"    -m    monitor\n"
+		"    -s    lua script\n"
+		"    -I    Interval\n"
+		"    -D    Duration\n",
 		prog);
 }
 
@@ -111,7 +114,7 @@ static int do_attach_lua(const char *script, size_t script_len)
 
 	err = bpf_set_link_xdp_lua_script(script, script_len);
 	if (err < 0)
-		fprintf(stderr, "ERROR: failed to attach lua script to %s\n", name);
+		fprintf(stderr, "ERROR: failed to attach lua script %d\n", err);
 
 	return err;
 }
@@ -127,13 +130,23 @@ static int do_detach(int idx, const char *name)
 	return err;
 }
 
-static void poll(int map_fd, int interval) {
-	long cnt;
+static void poll(int map_fd, int interval, int duration) {
+	unsigned int nr_cpus = bpf_num_possible_cpus();
+	long cnts[nr_cpus];
 	unsigned int key = 0;
+	int i;
 
-	while(1) {
-		bpf_map_lookup_elem(map_fd, &key, &cnt);
-		printf("pkt count: %lu\n", cnt);
+	for (i = 0; i < duration; i++) {
+		unsigned long cnt = 0;
+		int i;
+		bpf_map_lookup_elem(map_fd, &key, cnts);
+		for (i = 0; i < nr_cpus; ++i) {
+			cnt += cnts[i];
+			cnts[i] = 0;
+		}
+		bpf_map_update_elem(map_fd, &key, cnts, BPF_ANY);
+
+		printf("%lu\n", cnt);
 		sleep(interval);
 	}
 }
@@ -160,7 +173,6 @@ int main(int argc, char *argv[])
 	struct bpf_prog_load_attr prog_load_attr = {
 		.prog_type	= BPF_PROG_TYPE_XDP,
 	};
-	struct bpf_map *map;
 
 	memset(lua_filename, 0, MAXFILENAMELEN);
 	memset(filename, 0, MAXFILENAMELEN);
@@ -213,6 +225,7 @@ int main(int argc, char *argv[])
 				return 1;
 		}
 	}
+
 
 	if (attach_ebpf || detach) {
 		if (!ifindex) {
@@ -269,8 +282,7 @@ int main(int argc, char *argv[])
 			return 1;
 
 	if (monitor) {
-		map = bpf_object__find_map_by_name(obj, "rx_cnt");
-		rx_cnt_map_fd = bpf_map__fd(map);
+		rx_cnt_map_fd = bpf_map__fd(bpf_object__find_map_by_name(obj, "rx_cnt"));
 
 		poll(rx_cnt_map_fd, interval, duration);
 
