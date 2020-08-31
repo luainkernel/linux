@@ -172,6 +172,9 @@ always += task_fd_query_kern.o
 always += xdp_sample_pkts_kern.o
 # CONFIG_XDP_LUA
 always += xdplua_map_kern.o
+always += xdp_ssl_sni_drop_all.o
+always += xdp_ssl_sni_drop_ebpf.o
+always += xdp_ssl_sni_drop_lua.o
 
 KBUILD_HOSTCFLAGS += -I$(objtree)/usr/include
 KBUILD_HOSTCFLAGS += -I$(srctree)/tools/lib/
@@ -204,6 +207,7 @@ LLC ?= llc
 CLANG ?= clang
 LLVM_OBJCOPY ?= llvm-objcopy
 BTF_PAHOLE ?= pahole
+LLVM_READELF ?= llvm-readelf
 
 # Detect that we're cross compiling and use the cross compiler
 ifdef CROSS_COMPILE
