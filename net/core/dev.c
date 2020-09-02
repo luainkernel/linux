@@ -5396,23 +5396,6 @@ static int generic_xdp_install(struct net_device *dev, struct netdev_bpf *xdp)
 	return ret;
 }
 
-#ifdef CONFIG_XDP_LUA
-
-static void per_cpu_xdp_lua_install(struct work_struct *w) {
-	int this_cpu = smp_processor_id();
-	struct xdplua_create_work *lw =
-		container_of(w, struct xdplua_create_work, work);
-
-	spin_lock_bh(&lw->lock);
-	if (luaL_dostring(lw->state->L, lw->state->code_buffer)) {
-		pr_err(KERN_INFO "error: %s\nOn cpu: %d\n",
-			lua_tostring(lw->state->L, -1), this_cpu);
-	}
-	spin_unlock_bh(&lw->lock);
-}
-
-#endif /* CONFIG_XDP_LUA */
-
 static int netif_receive_skb_internal(struct sk_buff *skb)
 {
 	int ret;
@@ -10574,7 +10557,6 @@ static int __init net_dev_init(void)
 		luaL_requiref(lw->state->L, "data", luaopen_data, 1);
 		lua_pop(lw->state->L, 1);
 
-		INIT_WORK(&lw->work, per_cpu_xdp_lua_install);
 #endif /* CONFIG_XDP_LUA */
 	}
 

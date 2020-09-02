@@ -68,7 +68,6 @@ struct xdp_rxq_info {
 typedef struct lunatik_state lunatik_State;
 
 struct xdplua_create_work {
-	char				lua_script[8192];
 	lunatik_State *state;
 	struct work_struct	work;
 	spinlock_t		lock;

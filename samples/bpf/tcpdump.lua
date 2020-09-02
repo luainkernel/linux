@@ -1,4 +1,3 @@
-local xdplua  = require'xdplua'
 local lunatik = require'lunatik'
 local memory  = require'memory'
 local session = lunatik.session()
