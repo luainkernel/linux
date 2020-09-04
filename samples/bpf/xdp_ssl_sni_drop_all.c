@@ -21,18 +21,18 @@ struct bpf_map_def SEC("maps") rx_cnt = {
 	.max_entries = 1,
 };
 
-	SEC("sslparser")
+SEC("sslparser")
 int handle_ingress(struct xdp_md *ctx)
 {
 	u32 key_rx = 0;
 	long *cnt;
 
 	cnt = bpf_map_lookup_elem(&rx_cnt, &key_rx);
-	if (!cnt) {
+	if (!cnt)
 		return XDP_PASS;
-	}
+
 	(*cnt)++;
 
-	return XDP_PASS;
+	return XDP_DROP;
 }
 char _license[] SEC("license") = "GPL";
