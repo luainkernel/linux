@@ -117,7 +117,10 @@ static void poll(int map_fd, int interval, int duration) {
 		bpf_map_lookup_elem(map_fd, &key, cnts);
 		for (i = 0; i < nr_cpus; ++i) {
 			cnt += cnts[i];
+			cnts[i] = 0;
 		}
+		bpf_map_update_elem(map_fd, &key, cnts, BPF_ANY);
+
 		printf("%lu\n", cnt);
 		sleep(interval);
 	}
