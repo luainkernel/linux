@@ -5957,9 +5957,9 @@ static const struct bpf_func_proto bpf_lua_pop_proto = {
 	.arg2_type	= ARG_ANYTHING,
 };
 
-BPF_CALL_2(bpf_lua_pushinteger, struct xdp_buff *, ctx, int, num) {
+BPF_CALL_2(bpf_lua_pushinteger, struct xdp_buff *, ctx, lua_Integer, integer) {
 	verify_and_lock();
-	lua_pushinteger(ctx->L, num);
+	lua_pushinteger(ctx->L, integer);
 	return 0;
 }
 
