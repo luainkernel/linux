@@ -3772,6 +3772,10 @@ u32 __dev_xdp_query(struct net_device *dev, bpf_op_t xdp_op,
 		    enum bpf_netdev_command cmd);
 int xdp_umem_query(struct net_device *dev, u16 queue_id);
 
+#ifdef CONFIG_XDP_LUA
+int generic_xdp_lua_install_prog(char *lua_prog);
+#endif /* CONFIG_XDP_LUA */
+
 int __dev_forward_skb(struct net_device *dev, struct sk_buff *skb);
 int dev_forward_skb(struct net_device *dev, struct sk_buff *skb);
 bool is_skb_forwardable(const struct net_device *dev,

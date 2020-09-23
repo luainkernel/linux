@@ -1,0 +1,15 @@
+[submodule "lib/lunatik"]
+	path = lib/lunatik
+	url = https://github.com/luainkernel/lunatik.git
+[submodule "lib/luadata"]
+	path = lib/luadata
+	url = https://github.com/luainkernel/luadata
+[submodule "lib/luaxdp"]
+	path = lib/luaxdp
+	url = https://github.com/luainkernel/luaxdp.git
+[submodule "lib/luarcu"]
+	path = lib/luarcu
+	url = https://github.com/luainkernel/luarcu
+[submodule "lib/luaunpack"]
+	path = lib/luaunpack
+	url = https://github.com/VictorNogueiraRio/luaunpack.git

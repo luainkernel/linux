@@ -14,3 +14,10 @@ config XDP_SOCKETS_DIAG
 	help
 	  Support for PF_XDP sockets monitoring interface used by the ss tool.
 	  If unsure, say Y.
+
+config XDP_LUA
+	bool "XDP LUA"
+	depends on BPF_SYSCALL && LUNATIK
+	default n
+	help
+	  Support for Lua scripts inside XDP

@@ -63,6 +63,19 @@ struct xdp_rxq_info {
 	struct xdp_mem_info mem;
 } ____cacheline_aligned; /* perf critical, avoid false-sharing */
 
+#ifdef CONFIG_XDP_LUA
+struct xdplua_create_work {
+	char				lua_script[8192];
+	struct lua_State	*L;
+	struct work_struct	work;
+	spinlock_t		lock;
+	bool			init;
+};
+
+DECLARE_PER_CPU(struct xdplua_create_work, luaworks);
+#endif /* CONFIG_XDP_LUA */
+
+
 struct xdp_buff {
 	void *data;
 	void *data_end;
@@ -70,6 +83,10 @@ struct xdp_buff {
 	void *data_hard_start;
 	unsigned long handle;
 	struct xdp_rxq_info *rxq;
+#ifdef CONFIG_XDP_LUA
+	struct sk_buff *skb;
+	struct lua_State *L;
+#endif /* CONFIG_XDP_LUA */
 };
 
 struct xdp_frame {
