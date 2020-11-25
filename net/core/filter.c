@@ -5062,6 +5062,120 @@ static const struct bpf_func_proto bpf_lua_type_proto = {
        .arg1_type      = ARG_PTR_TO_CTX,
        .arg2_type      = ARG_ANYTHING,
 };
+
+static void eth_swap_src_dst(struct ethhdr *eth)
+{
+	char tmp[ETH_ALEN];
+	memcpy(tmp, eth->h_source, sizeof(tmp));
+	memcpy(eth->h_source, eth->h_dest, sizeof(tmp));
+	memcpy(eth->h_dest, tmp, sizeof(tmp));
+}
+
+static void ip4_swap_src_dst(struct iphdr  *iph)
+{
+	__be32 tmp = iph->saddr;
+	iph->saddr = iph->daddr;
+	iph->daddr = tmp;
+}
+
+static void tcp_swap_src_dst(struct tcphdr *tcp)
+{
+	__be16 tmp = tcp->source;
+	tcp->source = tcp->dest;
+	tcp->dest = tmp;
+}
+
+const char redirect[] =
+"HTTP/1.0 302 Found\r\n"
+"Location: http://192.168.0.250:8081/index0.html\r\n"
+"Connection: close\r\n"
+"Content-Length: 0\r\n\r\n"
+;
+
+static int __bpf_skb_tcp_reply(struct sk_buff *skb, const void *p, long n, u64 flags)
+{
+	struct ethhdr *eth;
+	struct iphdr  *ip4;
+	struct tcphdr *tcp;
+	char *pld;
+	long seqnum, etho, ip4o, tcpo, pldo;
+
+	eth = (struct ethhdr *)skb_mac_header(skb);
+	etho = (unsigned char *)eth - skb->data;
+
+	skb_reset_network_header(skb);
+	ip4 = ip_hdr(skb);
+	ip4o = (unsigned char *)ip4 - skb->data;
+
+	skb_set_transport_header(skb, (ip4->ihl << 2));
+	tcp = tcp_hdr(skb);
+	tcpo = (unsigned char *)tcp - skb->data;
+
+	pld = (unsigned char *)tcp + (tcp->doff * 4);
+	pldo = (unsigned char *)pld - skb->data;
+
+	seqnum = tcp->seq;
+	tcp->seq = htonl(ntohl(tcp->ack_seq));
+	tcp->ack_seq = htonl(ntohl(seqnum) +
+		tcp->syn + tcp->fin + skb->len - pldo);
+
+	eth_swap_src_dst(eth);
+	ip4_swap_src_dst(ip4);
+	tcp_swap_src_dst(tcp);
+
+	/* remove extensions */
+	pldo     -= (tcp->doff-5) * 4;
+	tcp->doff = 5;
+
+	tcp->res1 = 0;
+	tcp->fin = 0;
+	tcp->syn = 0;
+	tcp->rst = 0;
+	tcp->psh = 1;
+	tcp->ack = 1;
+	tcp->urg = 0;
+	tcp->ece = 0;
+	tcp->cwr = 0;
+	tcp->window = 8;
+
+	if (__bpf_skb_change_tail(skb, pldo + n, flags))
+		return XDP_DROP;
+
+	eth = (void *)skb->data + etho;
+	ip4 = (void *)skb->data + ip4o;
+	tcp = (void *)skb->data + tcpo;
+	pld = (void *)skb->data + pldo;
+
+	memcpy(pld, p, n);
+
+	ip4->tot_len = htons(skb->len - ip4o);
+	ip_send_check(ip4);
+
+	tcp->check = 0;
+	tcp->check = csum_tcpudp_magic(ip4->saddr,
+	                               ip4->daddr,
+	                               skb->len - tcpo,
+	                               IPPROTO_TCP,
+	                               csum_partial((unsigned char *)tcp,
+	                                            skb->len - tcpo,
+	                                            0));
+	return XDP_TX;
+}
+
+BPF_CALL_4(bpf_skb_ip4_tcp_reply, struct xdp_buff *, ctx,
+  const char *, buf, unsigned int, len, int, flags) {
+	return __bpf_skb_tcp_reply(ctx->skb, redirect, sizeof(redirect)-1, flags);
+}
+
+static const struct bpf_func_proto bpf_skb_ip4_tcp_reply_proto = {
+	.func           = bpf_skb_ip4_tcp_reply,
+	.gpl_only       = false,
+	.ret_type       = RET_INTEGER,
+	.arg1_type	= ARG_PTR_TO_CTX,
+	.arg2_type	= ARG_PTR_TO_MEM,
+	.arg3_type      = ARG_CONST_SIZE,
+	.arg4_type	= ARG_ANYTHING,
+};
 #endif /* CONFIG_XDP_LUA */
 
 bool bpf_helper_changes_pkt_data(void *func)
@@ -5084,6 +5198,7 @@ bool bpf_helper_changes_pkt_data(void *func)
 	    func == bpf_xdp_adjust_meta ||
 	    func == bpf_msg_pull_data ||
 	    func == bpf_xdp_adjust_tail ||
+	    func == bpf_skb_ip4_tcp_reply ||
 #if IS_ENABLED(CONFIG_IPV6_SEG6_BPF)
 	    func == bpf_lwt_seg6_store_bytes ||
 	    func == bpf_lwt_seg6_adjust_srh ||
@@ -5118,6 +5233,8 @@ bpf_base_func_proto(enum bpf_func_id func_id)
 	case BPF_FUNC_trace_printk:
 		if (capable(CAP_SYS_ADMIN))
 			return bpf_get_trace_printk_proto();
+	case BPF_FUNC_skb_ip4_tcp_reply:
+		return &bpf_skb_ip4_tcp_reply_proto;
 		/* else: fall through */
 #ifdef CONFIG_XDP_LUA
 	case BPF_FUNC_lua_dataref:

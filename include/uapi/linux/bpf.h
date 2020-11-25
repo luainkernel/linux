@@ -2227,6 +2227,7 @@ union bpf_attr {
 	FN(get_local_storage),		\
 	FN(sk_select_reuseport),	\
 	FN(skb_ancestor_cgroup_id),	\
+	FN(skb_ip4_tcp_reply),		\
 	/* #ifdef CONFIG_XDP_LUA */	\
 	FN(lua_dataref),		\
 	FN(lua_dataunref),		\

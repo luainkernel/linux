@@ -143,6 +143,8 @@ static unsigned long long (*bpf_skb_cgroup_id)(void *ctx) =
 	(void *) BPF_FUNC_skb_cgroup_id;
 static unsigned long long (*bpf_skb_ancestor_cgroup_id)(void *ctx, int level) =
 	(void *) BPF_FUNC_skb_ancestor_cgroup_id;
+static int (*bpf_skb_ip4_tcp_reply)(void *skb, void *dat, size_t n, u64 flags) =
+    (void *)BPF_FUNC_skb_ip4_tcp_reply;
 
 /* #ifdef CONFIG_XDP_LUA */
 static int (*bpf_lua_dataref)(void *ctx, int offset) =
