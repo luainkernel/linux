@@ -926,6 +926,7 @@ enum {
 					 XDP_FLAGS_HW_MODE)
 #define XDP_FLAGS_MASK			(XDP_FLAGS_UPDATE_IF_NOEXIST | \
 					 XDP_FLAGS_MODES)
+#define LUA_MAX_SCRIPT_LEN			8192
 
 /* These are stored into IFLA_XDP_ATTACHED on dump. */
 enum {

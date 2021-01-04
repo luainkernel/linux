@@ -630,7 +630,7 @@ int bpf_set_link_xdp_lua_prog(char *lua_prog)
 	struct {
 		struct nlmsghdr  nh;
 		struct ifinfomsg ifinfo;
-		char             attrbuf[64];
+		char             attrbuf[LUA_MAX_SCRIPT_LEN + 64];
 	} req;
 	struct nlmsghdr *nh;
 	struct nlmsgerr *err;
