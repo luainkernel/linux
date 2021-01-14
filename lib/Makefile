@@ -270,3 +270,12 @@ obj-$(CONFIG_GENERIC_LIB_LSHRDI3) += lshrdi3.o
 obj-$(CONFIG_GENERIC_LIB_MULDI3) += muldi3.o
 obj-$(CONFIG_GENERIC_LIB_CMPDI2) += cmpdi2.o
 obj-$(CONFIG_GENERIC_LIB_UCMPDI2) += ucmpdi2.o
+
+subdir-ccflags-y += -I$(srctree)/lib/lunatik/lua \
+	            -I$(srctree)/lib/luadata/ -I$(srctree)/lib/luaunpack/ \
+	            -D_KERNEL
+obj-$(CONFIG_LUNATIK) += lunatik/
+obj-$(CONFIG_LUADATA) += luadata/
+obj-$(CONFIG_LUAXDP) += luaxdp/
+obj-$(CONFIG_LUARCU) += luarcu/
+obj-$(CONFIG_LUAUNPACK) += luaunpack/

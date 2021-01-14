@@ -144,6 +144,41 @@ static unsigned long long (*bpf_skb_cgroup_id)(void *ctx) =
 static unsigned long long (*bpf_skb_ancestor_cgroup_id)(void *ctx, int level) =
 	(void *) BPF_FUNC_skb_ancestor_cgroup_id;
 
+/* #ifdef CONFIG_XDP_LUA */
+static int (*bpf_lua_dataref)(void *ctx, int offset) =
+    (void *)BPF_FUNC_lua_dataref;
+static void (*bpf_lua_dataunref)(void *ctx, int data_ref) =
+    (void *)BPF_FUNC_lua_dataunref;
+static int (*bpf_lua_pcall)(void *ctx, char *funcname, int num_args,
+				   int num_rets) =
+    (void *) BPF_FUNC_lua_pcall;
+static int (*bpf_lua_tostring)(void *ctx, char *sslsni, u32 size, int index) =
+    (void *)BPF_FUNC_lua_tostring;
+static void (*bpf_lua_pop)(void *ctx, int index) =
+    (void *)BPF_FUNC_lua_pop;
+static void (*bpf_lua_pushinteger)(void *ctx, int num) =
+    (void *)BPF_FUNC_lua_pushinteger;
+static void (*bpf_lua_pushlightuserdata)(void *ctx, void *ptr) =
+    (void *)BPF_FUNC_lua_pushlightuserdata;
+static void (*bpf_lua_pushlstring)(void *ctx, const char *,
+				   size_t len) =
+    (void *)BPF_FUNC_lua_pushlstring;
+static void (*bpf_lua_pushmap)(void *ctx, void *map) =
+    (void *)BPF_FUNC_lua_pushmap;
+static void (*bpf_lua_pushskb)(void *ctx) =
+    (void *)BPF_FUNC_lua_pushskb;
+static void (*bpf_lua_pushstring)(void *ctx, const char *) =
+    (void *)BPF_FUNC_lua_pushstring;
+static int (*bpf_lua_toboolean)(void *ctx, int index) =
+    (void *)BPF_FUNC_lua_toboolean;
+static int (*bpf_lua_tointeger)(void *ctx, int index) =
+    (void *)BPF_FUNC_lua_tointeger;
+static int (*bpf_lua_newpacket)(void *ctx, int offset) =
+    (void *)BPF_FUNC_lua_newpacket;
+static int (*bpf_lua_type)(void *ctx, int index) =
+    (void *)BPF_FUNC_lua_type;
+/* #endif CONFIG_XDP_LUA */
+
 /* llvm builtin functions that eBPF C program may use to
  * emit BPF_LD_ABS and BPF_LD_IND instructions
  */

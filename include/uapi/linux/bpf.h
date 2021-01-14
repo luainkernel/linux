@@ -2226,7 +2226,24 @@ union bpf_attr {
 	FN(get_current_cgroup_id),	\
 	FN(get_local_storage),		\
 	FN(sk_select_reuseport),	\
-	FN(skb_ancestor_cgroup_id),
+	FN(skb_ancestor_cgroup_id),	\
+	/* #ifdef CONFIG_XDP_LUA */	\
+	FN(lua_dataref),		\
+	FN(lua_dataunref),		\
+	FN(lua_pcall),			\
+	FN(lua_tostring),		\
+	FN(lua_pop),			\
+	FN(lua_pushinteger),		\
+	FN(lua_pushlightuserdata),	\
+	FN(lua_pushlstring),		\
+	FN(lua_pushmap),		\
+	FN(lua_pushskb),		\
+	FN(lua_pushstring),		\
+	FN(lua_toboolean),		\
+	FN(lua_tointeger),		\
+	FN(lua_newpacket),		\
+	FN(lua_type),
+	/* #endif CONFIG_XDP_LUA */
 
 /* integer value in 'imm' field of BPF_CALL instruction selects which helper
  * function eBPF program intends to call

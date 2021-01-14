@@ -284,6 +284,9 @@ int bpf_prog_load(const char *file, enum bpf_prog_type type,
 		  struct bpf_object **pobj, int *prog_fd);
 
 int bpf_set_link_xdp_fd(int ifindex, int fd, __u32 flags);
+/* #ifdef CONFIG_XDP_LUA */
+int bpf_set_link_xdp_lua_prog(char *lua_prog);
+/* #endif CONFIG_XDP_LUA */
 
 enum bpf_perf_event_ret {
 	LIBBPF_PERF_EVENT_DONE	= 0,

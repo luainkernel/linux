@@ -72,6 +72,14 @@
  *				        - netif_rx() feedback
  */
 
+#ifdef CONFIG_XDP_LUA
+#include <lua.h>
+#include <lauxlib.h>
+#include <lstate.h>
+#include <lualib.h>
+#include <luadata.h>
+#endif /* CONFIG_XDP_LUA */
+
 #include <linux/uaccess.h>
 #include <linux/bitops.h>
 #include <linux/capability.h>
@@ -155,6 +163,9 @@
 
 static DEFINE_SPINLOCK(ptype_lock);
 static DEFINE_SPINLOCK(offload_lock);
+#ifdef CONFIG_XDP_LUA
+DEFINE_PER_CPU(struct xdplua_create_work, luaworks);
+#endif
 struct list_head ptype_base[PTYPE_HASH_SIZE] __read_mostly;
 struct list_head ptype_all __read_mostly;	/* Taps */
 static struct list_head offload_base __read_mostly;
@@ -4279,6 +4290,9 @@ static u32 netif_receive_generic_xdp(struct sk_buff *skb,
 	u32 metalen, act = XDP_DROP;
 	int hlen, off;
 	u32 mac_len;
+#ifdef CONFIG_XDP_LUA
+	struct xdplua_create_work *lw;
+#endif /* CONFIG_XDP_LUA */
 
 	/* Reinjected packets coming from act_mirred or similar should
 	 * not get XDP generic processing.
@@ -4320,8 +4334,21 @@ static u32 netif_receive_generic_xdp(struct sk_buff *skb,
 
 	rxqueue = netif_get_rxqueue(skb);
 	xdp->rxq = &rxqueue->xdp_rxq;
+#ifdef CONFIG_XDP_LUA
+	lw = this_cpu_ptr(&luaworks);
+
+	xdp->skb = skb;
+	xdp->L = lw->L;
+#endif /* CONFIG_XDP_LUA */
 
 	act = bpf_prog_run_xdp(xdp_prog, xdp);
+
+#ifdef CONFIG_XDP_LUA
+	if (lw->init) {
+		lw->init = false;
+		spin_unlock(&lw->lock);
+	}
+#endif /* CONFIG_XDP_LUA */
 
 	off = xdp->data - orig_data;
 	if (off > 0)
@@ -5087,6 +5114,35 @@ static int generic_xdp_install(struct net_device *dev, struct netdev_bpf *xdp)
 
 	return ret;
 }
+
+#ifdef CONFIG_XDP_LUA
+
+static void per_cpu_xdp_lua_install(struct work_struct *w) {
+	int this_cpu = smp_processor_id();
+	struct xdplua_create_work *lw =
+		container_of(w, struct xdplua_create_work, work);
+
+	spin_lock_bh(&lw->lock);
+	if (luaL_dostring(lw->L, lw->lua_script)) {
+		pr_err(KERN_INFO "error: %s\nOn cpu: %d\n",
+			lua_tostring(lw->L, -1), this_cpu);
+	}
+	spin_unlock_bh(&lw->lock);
+}
+
+int generic_xdp_lua_install_prog(char *lua_script)
+{
+	int cpu;
+	struct xdplua_create_work *lw;
+
+	for_each_possible_cpu(cpu) {
+		lw = per_cpu_ptr(&luaworks, cpu);
+		strcpy(lw->lua_script, lua_script);
+		schedule_work_on(cpu, &lw->work);
+	}
+	return 0;
+}
+#endif /* CONFIG_XDP_LUA */
 
 static int netif_receive_skb_internal(struct sk_buff *skb)
 {
@@ -9595,6 +9651,9 @@ static int __init net_dev_init(void)
 	for_each_possible_cpu(i) {
 		struct work_struct *flush = per_cpu_ptr(&flush_works, i);
 		struct softnet_data *sd = &per_cpu(softnet_data, i);
+#ifdef CONFIG_XDP_LUA
+		struct xdplua_create_work *lw = per_cpu_ptr(&luaworks, i);
+#endif
 
 		INIT_WORK(flush, flush_backlog);
 
@@ -9614,6 +9673,19 @@ static int __init net_dev_init(void)
 		init_gro_hash(&sd->backlog);
 		sd->backlog.poll = process_backlog;
 		sd->backlog.weight = weight_p;
+#ifdef CONFIG_XDP_LUA
+		lw->L = luaL_newstate();
+		WARN_ON(!lw->L);
+
+		if (!lw->L)
+			continue;
+
+		luaL_openlibs(lw->L);
+		luaL_requiref(lw->L, "data", luaopen_data, 1);
+		lua_pop(lw->L, 1);
+
+		INIT_WORK(&lw->work, per_cpu_xdp_lua_install);
+#endif /* CONFIG_XDP_LUA */
 	}
 
 	dev_boot_phase = 0;
