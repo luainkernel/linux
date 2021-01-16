@@ -41,12 +41,24 @@ static void usage(const char *prog) {
 		prog);
 }
 
-static char *extract_script(const char *path)
+static int try_strncpy(char *dest, const char *src, size_t n, const char *fmt) {
+	int srclen = strnlen(src, n);
+
+	if (srclen == n) {
+		int err = ENAMETOOLONG;
+		fprintf(stderr, fmt, strerror(err));
+		return -err;
+	}
+
+	strncpy(dest, src, n);
+	return srclen;
+}
+
+static char *extract_script(const char *path, size_t *script_len)
 {
 	FILE *f;
-	long script_len;
 	size_t read;
-	char *script = NULL;
+	char *script;
 
 	f = fopen(path, "r");
 	if (f == NULL) {
@@ -54,34 +66,35 @@ static char *extract_script(const char *path)
 		return NULL;
 	}
 
-	if (fseek(f, 0 , SEEK_END) < 0) {
-		perror("unable to reach end of script file");
-		goto out;
-	}
-	script_len = ftell(f);
-	if (script_len < 0) {
-		perror("error while attempting to get script length");
-		goto out;
+	if (fseek(f, 0 , SEEK_END) < 0 || (*script_len = (size_t) ftell(f)) < 0)
+	{
+		perror("error while attempting to get file length");
+		goto close;
 	}
 	rewind(f);
 
-	script = (char *) malloc(script_len + 1);
-	if (!script) {
-		perror("failed to alloc lua script");
-		goto out;
-	}
-	memset(script, 0, script_len + 1);
-	read = fread(script, 1, script_len, f);
-	if (read != script_len) {
-		perror("unable to read lua file");
-		free(script);
-		script = NULL;
-		goto out;
+	if (*script_len > XDP_LUA_MAX_SCRIPT_LEN) {
+		fprintf(stderr, "lua file can't have more than %d bytes.\n%s\n",
+			XDP_LUA_MAX_SCRIPT_LEN, strerror(E2BIG);
 	}
 
-out:
-	fclose(f);
+	script = (char *) malloc(sizeof(char) * (*script_len));
+	if (!script) {
+		perror("failed to alloc lua script");
+		goto close;
+	}
+
+	read = fread(script, sizeof(char), *script_len, f);
+	if (read != *script_len) {
+		fprintf(stderr, "unable to read file %s\n", path);
+		free(script);
+		goto close;
+	}
+
 	return script;
+close:
+	fclose(f);
+	return NULL;
 }
 
 static int do_attach_ebpf(int idx, int fd, const char *name)
@@ -95,11 +108,11 @@ static int do_attach_ebpf(int idx, int fd, const char *name)
 	return err;
 }
 
-static int do_attach_lua(const char *script)
+static int do_attach_lua(const char *script, size_t script_len)
 {
 	int err;
 
-	err = bpf_set_link_xdp_lua_script(script);
+	err = bpf_set_link_xdp_lua_script(script, script_len);
 	if (err < 0)
 		fprintf(stderr, "ERROR: failed to attach lua script %d\n", err);
 
@@ -138,12 +151,15 @@ static void poll(int map_fd, int interval, int duration) {
 	}
 }
 
+#define strncpy_err(fmt, err) fprintf(stderr, fmt, strerr(-err))
+
 int main(int argc, char *argv[])
 {
 	struct rlimit r = {RLIM_INFINITY, RLIM_INFINITY};
 	char lua_filename[MAXFILENAMELEN];
 	char filename[MAXFILENAMELEN];
 	char script[XDP_LUA_MAX_SCRIPT_LEN];
+	size_t script_len = 0;
 	char ifname[IFNAMSIZ];
 	struct bpf_object *obj;
 	int opt, prog_fd;
@@ -151,6 +167,7 @@ int main(int argc, char *argv[])
 	int ifindex = 0;
 	int detach = 0, attach_lua_file = 0, attach_ebpf = 0, monitor = 0,
 		attach_lua_script = 0, interval = 1, duration = 1;
+	int err = 0;
 
 	const char *optstr = "f:p:i:dms:I:D:";
 	struct bpf_prog_load_attr prog_load_attr = {
@@ -163,28 +180,40 @@ int main(int argc, char *argv[])
 	while ((opt = getopt(argc, argv, optstr)) != -1) {
 		switch (opt) {
 			case 'f':
-				snprintf(lua_filename, sizeof(lua_filename), "%s", optarg);
+				err = try_strncpy(lua_filename, optarg,
+							MAXFILENAMELEN, "Invalid lua filename\nerr: %s\n");
+				if (err < 0)
+					return 1;
 				attach_lua_file = 1;
 				break;
 			case 'p':
-				snprintf(filename, sizeof(filename),
-						"%s", optarg);
+				err = try_strncpy(filename, optarg,
+						MAXFILENAMELEN, "Invalid bpf prog filename\nerr: %s");
+				if (err < 0)
+					return 1;
 				attach_ebpf = 1;
 				break;
 			case 'd':
 				detach = 1;
 				break;
 			case 'i':
-				snprintf(ifname, sizeof(ifname), "%s", optarg);
+				script_len = try_strncpy(ifname, optarg, IFNAMSIZ,
+								"Invalid interface name\nerr: %s");
+				if (script_len < 0)
+					return 1;
 				ifindex = if_nametoindex(optarg);
 				break;
 			case 'm':
 				monitor = 1;
 				break;
-			case 's':
-				snprintf(script, sizeof(script), "%s", optarg);
+			case 's': {
+				err = try_strncpy(script, optarg, XDP_LUA_MAX_SCRIPT_LEN,
+								"Invalid lua script\nerr: %s");
+				if (err < 0)
+					return 1;
 				attach_lua_script = 1;
 				break;
+		    }
 			case 'I':
 				interval = atoi(optarg);
 				break;
@@ -196,7 +225,6 @@ int main(int argc, char *argv[])
 				return 1;
 		}
 	}
-
 
 	if (attach_ebpf || detach) {
 		if (!ifindex) {
@@ -234,20 +262,22 @@ int main(int argc, char *argv[])
 	}
 
 	if (attach_lua_file) {
-		char *extracted_script = extract_script(lua_filename);
+		int ret = 0;
+		size_t extracted_script_len;
+		char *extracted_script = extract_script(lua_filename,
+									&extracted_script_len);
 		if (!extracted_script)
 			return 1;
 
-		if (do_attach_lua(extracted_script) < 0) {
-			free(extracted_script);
-			return 1;
-		}
+		if (do_attach_lua(extracted_script, extracted_script_len) < 0)
+			ret = 1;
 
 		free(extracted_script);
+		return ret;
 	}
 
 	if (attach_lua_script)
-		if (do_attach_lua(script) < 0)
+		if (do_attach_lua(script, script_len) < 0)
 			return 1;
 
 	if (monitor) {
