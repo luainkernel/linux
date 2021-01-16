@@ -643,16 +643,16 @@ cleanup:
 }
 
 /* #ifdef CONFIG_XDPLUA */
-int bpf_set_link_xdp_lua_script(const char *script)
+int bpf_set_link_xdp_lua_script(const char *script, size_t script_len)
 {
 	struct sockaddr_nl sa;
 	int sock, seq = 0, len, ret = -1;
 	char buf[4096];
-	struct nlattr *nla, *nla_xdp;
+	struct nlattr *nla, *nla_xdp_lua;
 	struct {
 		struct nlmsghdr  nh;
 		struct ifinfomsg ifinfo;
-		char             attrbuf[XDP_LUA_MAX_SCRIPT_LEN + 64];
+		char             attrbuf[XDP_LUA_MAX_SCRIPT_LEN];
 	} req;
 	struct nlmsghdr *nh;
 	struct nlmsgerr *err;
@@ -703,24 +703,24 @@ int bpf_set_link_xdp_lua_script(const char *script)
 	nla->nla_type = NLA_F_NESTED | IFLA_XDP;
 	nla->nla_len = NLA_HDRLEN;
 
-	/* add XDP LUA PROG */
-	nla_xdp = (struct nlattr *)((char *)nla + nla->nla_len);
-	nla_xdp->nla_type = IFLA_XDP_LUA_PROG;
+	/* add XDP LUA SCRIPT */
+	nla_xdp_lua = (struct nlattr *)((char *)nla + nla->nla_len);
+	nla_xdp_lua->nla_type = IFLA_XDP_LUA_PROG;
 	if (script) {
-		if (strlen(script) + 1 > XDP_LUA_MAX_SCRIPT_LEN) {
+		if (script_len > XDP_LUA_MAX_SCRIPT_LEN) {
 			fprintf(stderr, "script length cannot exceed %d bytes\n",
 					XDP_LUA_MAX_SCRIPT_LEN);
-			ret = -EINVAL;
+			ret = -ENAMETOOLONG;
 			goto cleanup;
 		}
 
-		nla_xdp->nla_len = NLA_HDRLEN + strlen(script) + 1;
-		memcpy((char *)nla_xdp + NLA_HDRLEN, script, strlen(script) + 1);
+		nla_xdp_lua->nla_len = NLA_HDRLEN + script_len;
+		memcpy((char *)nla_xdp_lua + NLA_HDRLEN, script, script_len);
 	} else {
 		ret = -EINVAL;
 		goto cleanup;
 	}
-	nla->nla_len += nla_xdp->nla_len;
+	nla->nla_len += nla_xdp_lua->nla_len;
 
 	req.nh.nlmsg_len += NLA_ALIGN(nla->nla_len);
 

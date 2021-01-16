@@ -2663,14 +2663,14 @@ static int do_setlink(const struct sk_buff *skb,
 #ifdef CONFIG_XDP_LUA
 		if (xdp[IFLA_XDP_LUA_PROG]) {
 			const char *script;
+			int script_len;
 
 			script = nla_data(xdp[IFLA_XDP_LUA_PROG]);
-			if (!script) {
-				err = -EINVAL;
-				goto errout;
-			}
+			script_len = nla_len(xdp[IFLA_XDP_LUA_PROG]);
 
-			generic_xdp_lua_install_prog(script);
+			err = generic_xdp_lua_install_prog(script, script_len);
+			if (err)
+				goto errout;
 		}
 #endif  /* CONFIG_XDP_LUA */
 	}

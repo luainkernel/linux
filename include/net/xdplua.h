@@ -22,6 +22,7 @@
 
 struct xdp_lua_work {
 	char				script[XDP_LUA_MAX_SCRIPT_LEN];
+	size_t				script_len;
 	struct lua_State	*L;
 	struct sk_buff		*skb;
 	struct work_struct	work;
@@ -29,12 +30,13 @@ struct xdp_lua_work {
 
 DECLARE_PER_CPU(struct xdp_lua_work, luaworks);
 
+
 #define XDP_LUA_BPF_FUNC(name)	BPF_FUNC_lua_##name
 
 #define xdp_lua_get_skb() 		(this_cpu_ptr(&luaworks)->skb)
 #define xdp_lua_set_skb(skb) 	(this_cpu_ptr(&luaworks)->skb = skb)
 
-void generic_xdp_lua_install_prog(const char *script);
+int generic_xdp_lua_install_prog(const char *script, size_t script_len);
 void xdp_lua_init(void);
 
 #define __BPF_LUA_MAP_0(l, m, v, ...) l

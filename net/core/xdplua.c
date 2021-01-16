@@ -28,23 +28,39 @@ static void per_cpu_xdp_lua_install(struct work_struct *w)
 	lw = container_of(w, struct xdp_lua_work, work);
 
 	local_bh_disable();
-	if (luaL_dostring(lw->L, lw->script)) {
-		pr_err(KERN_INFO "error: %s\nOn cpu: %d\n",
+	if (luaL_loadbufferx(lw->L, lw->script, lw->script_len, NULL, "t")) {
+		pr_err("error loading Lua script: %s\non cpu: %d\n",
+			lua_tostring(lw->L, -1), this_cpu);
+		lua_pop(lw->L, 1);
+		goto enable;
+	}
+
+	if (lua_pcall(lw->L, 0, LUA_MULTRET, 0)) {
+		pr_err("error running Lua script: %s\non cpu: %d\n",
 			lua_tostring(lw->L, -1), this_cpu);
 		lua_pop(lw->L, 1);
 	}
+
+enable:
 	local_bh_enable();
 }
 
-void generic_xdp_lua_install_prog(const char *script)
+int generic_xdp_lua_install_prog(const char *script, size_t script_len)
 {
 	int i;
+
+	if (!script || script_len == 0)
+		return -EINVAL;
+
+	if (script_len > XDP_LUA_MAX_SCRIPT_LEN)
+		return -ENAMETOOLONG;
 
 	for_each_possible_cpu(i) {
 		struct xdp_lua_work *lw;
 
 		lw = per_cpu_ptr(&luaworks, i);
-		strncpy(lw->script, script, XDP_LUA_MAX_SCRIPT_LEN);
+		memcpy(lw->script, script, script_len);
+		lw->script_len = script_len;
 		schedule_work_on(i, &lw->work);
 	}
 
