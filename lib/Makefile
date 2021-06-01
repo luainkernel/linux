@@ -353,3 +353,12 @@ obj-$(CONFIG_BITFIELD_KUNIT) += bitfield_kunit.o
 obj-$(CONFIG_LIST_KUNIT_TEST) += list-test.o
 obj-$(CONFIG_LINEAR_RANGES_TEST) += test_linear_ranges.o
 obj-$(CONFIG_BITS_TEST) += test_bits.o
+
+subdir-ccflags-y += -I$(srctree)/lib/lunatik/lua \
+	            -I$(srctree)/lib/luadata/ -I$(srctree)/lib/luaunpack/ \
+	            -D_KERNEL
+obj-$(CONFIG_LUNATIK) += lunatik/
+obj-$(CONFIG_LUADATA) += luadata/
+obj-$(CONFIG_LUAXDP) += luaxdp/
+obj-$(CONFIG_LUARCU) += luarcu/
+obj-$(CONFIG_LUAUNPACK) += luaunpack/
