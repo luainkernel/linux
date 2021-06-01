@@ -3742,6 +3742,111 @@ union bpf_attr {
  * 	Return
  * 		The helper returns **TC_ACT_REDIRECT** on success or
  * 		**TC_ACT_SHOT** on error.
+ *
+ * int bpf_lua_dataref(void *ctx, int offset)
+ *	Description
+ *		Create a new lua data buffer object pointing to the captured
+ *		packet at the specified offset. The function leaves the new
+ *		object on top of the Lua stack.
+ *	Return
+ *		Data object reference number on success, or -1 in case
+ *		of failure
+ *
+ * void bpf_lua_dataunref(int data_ref)
+ *	Description
+ *		Releases the data-object reference, allowing it to be
+ *		garbage-collected
+ *
+ * int bpf_lua_pcall(char *funcname, int num_args, int num_rets)
+ *	Description
+ *		Calls Lua function funcname with the given nargs arguments in protected mode
+ *
+ * void bpf_lua_pop(int n)
+ *	Description
+ *		Pops n elements from the Lua stack
+ *
+ * void bpf_lua_pushinteger(int num)
+ *	Description
+ *		Pushes an integer with value n onto the Lua stack.
+ *
+ * void bpf_lua_pushlightuserdata(void *ptr)
+ *	Description
+ *		Pushes a light userdata onto the Lua stack.
+ *		Userdata represent C values in Lua.
+ *		A light userdata represents a pointer, a void*.
+ *		It is a value (like a number): you do not create it,
+ *		it has no individual metatable, and it is not collected
+ *		(as it was never created).
+ *		A light userdata is equal to "any" light userdata with
+ *		the same C address.
+ *
+ * void bpf_lua_pushlstring(const char *s, size_t len)
+ *	Description
+ *		Pushes the string pointed to by s with size len onto the stack.
+ *		Lua makes (or reuses) an internal copy of the given string,
+ *		so the memory at s can be freed or reused immediately after the
+ *		function returns.
+ *		The string can contain any binary data, including embedded zeros.
+ *
+ * void bpf_lua_pushmap(void *map)
+ *	Description
+ *		Pushes a BPF map onto the Lua stack
+ *
+ * void bpf_lua_pushskb(void)
+ *	Description
+ *		Pushes an SKB structure onto the Lua stack
+ *
+ * void bpf_lua_pushstring(const char *s)
+ *	Description
+ *		Pushes the zero-terminated string pointed to by s onto the stack.
+ *		Lua makes (or reuses) an internal copy of the given string,
+ *		so the memory at s can be freed or reused immediately after the
+ *		function returns.
+ *
+ * int bpf_lua_toboolean(int index)
+ *	Description
+ *		Converts the Lua value at the given index to a C
+ *		boolean value (0 or 1)
+ *	Return
+ *		1 if the value in the given index of the Lua stack is
+ *		different from from false or null, otherwise returns 0
+ *
+ * int bpf_lua_tointeger(int index)
+ *	Description
+ *		Converts the Lua value at the given index of the Lua stack
+ *		to the signed integral type lua_Integer.
+ *	Return
+ *		The converted Lua value at the given index, if the value is
+ *		convertible to an integer(see the Lua manual for more details
+ *		on type conversion); otherwise returns 0
+ *
+ * void bpf_lua_tostring(const char *str, u32 size, int index)
+ *	Description
+ *		Converts the Lua value at the given index of the Lua
+ *		stack to a C string and copies size bytes of it to
+ *		value pointed by str
+ *	Return
+ *		1 if the value at the given index of the Lua stack is a
+ *		string; otherwise it returns 0
+ *
+ * int bpf_lua_newpacket(void *ctx, int offset)
+ *	Description
+ *		Create new luaunpack user data buffer pointing to
+ *		the captured packet at the specified offset
+ *
+ * int bpf_lua_type(int index)
+ *	Description
+ *		Obtains the type of the Lua value at the given index
+ *		of the Lua stack
+ *
+ *	Return
+ *		Type of the value in the given valid index,
+ *		or LUA_TNONE for a non-valid (but acceptable) index.
+ *		The types returned by lua_type are coded by the
+ *		following constants defined in lua.h: LUA_TNIL (0),
+ *		LUA_TNUMBER, LUA_TBOOLEAN, LUA_TSTRING, LUA_TTABLE,
+ *		LUA_TFUNCTION, LUA_TUSERDATA, LUA_TTHREAD, and
+ *		LUA_TLIGHTUSERDATA.
  */
 #define __BPF_FUNC_MAPPER(FN)		\
 	FN(unspec),			\
@@ -3900,6 +4005,23 @@ union bpf_attr {
 	FN(per_cpu_ptr),		\
 	FN(this_cpu_ptr),		\
 	FN(redirect_peer),		\
+	/* #ifdef CONFIG_XDP_LUA */	\
+	FN(lua_dataref),		\
+	FN(lua_dataunref),		\
+	FN(lua_pcall),			\
+	FN(lua_pop),			\
+	FN(lua_pushinteger),		\
+	FN(lua_pushlightuserdata),	\
+	FN(lua_pushlstring),		\
+	FN(lua_pushmap),		\
+	FN(lua_pushskb),		\
+	FN(lua_pushstring),		\
+	FN(lua_toboolean),		\
+	FN(lua_tointeger),		\
+	FN(lua_tostring),		\
+	FN(lua_newpacket),		\
+	FN(lua_type),
+	/* #endif CONFIG_XDP_LUA */
 	/* */
 
 /* integer value in 'imm' field of BPF_CALL instruction selects which helper

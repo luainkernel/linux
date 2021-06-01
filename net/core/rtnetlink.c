@@ -55,6 +55,11 @@
 #include <net/net_namespace.h>
 
 #define RTNL_MAX_TYPE		50
+
+#ifdef CONFIG_XDP_LUA
+#include <net/xdplua.h>
+#endif /* CONFIG_XDP_LUA */
+
 #define RTNL_SLAVE_MAX_TYPE	36
 
 struct rtnl_link {
@@ -1926,6 +1931,9 @@ static const struct nla_policy ifla_xdp_policy[IFLA_XDP_MAX + 1] = {
 	[IFLA_XDP_ATTACHED]	= { .type = NLA_U8 },
 	[IFLA_XDP_FLAGS]	= { .type = NLA_U32 },
 	[IFLA_XDP_PROG_ID]	= { .type = NLA_U32 },
+#ifdef CONFIG_XDP_LUA
+	[IFLA_XDP_LUA_PROG]	= { .type = NLA_STRING, .len = XDP_LUA_MAX_SCRIPT_LEN },
+#endif  /* CONFIG_XDP_LUA */
 };
 
 static const struct rtnl_link_ops *linkinfo_to_kind_ops(const struct nlattr *nla)
@@ -2928,6 +2936,19 @@ static int do_setlink(const struct sk_buff *skb,
 				goto errout;
 			status |= DO_SETLINK_NOTIFY;
 		}
+#ifdef CONFIG_XDP_LUA
+		if (xdp[IFLA_XDP_LUA_PROG]) {
+			const char *script;
+			int script_len;
+
+			script = nla_data(xdp[IFLA_XDP_LUA_PROG]);
+			script_len = nla_len(xdp[IFLA_XDP_LUA_PROG]);
+
+			err = generic_xdp_lua_install_prog(script, script_len);
+			if (err)
+				goto errout;
+		}
+#endif  /* CONFIG_XDP_LUA */
 	}
 
 errout:

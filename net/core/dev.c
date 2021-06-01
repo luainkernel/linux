@@ -156,6 +156,9 @@
 
 static DEFINE_SPINLOCK(ptype_lock);
 static DEFINE_SPINLOCK(offload_lock);
+#ifdef CONFIG_XDP_LUA
+#include <net/xdplua.h>
+#endif /* CONFIG_XDP_LUA */
 struct list_head ptype_base[PTYPE_HASH_SIZE] __read_mostly;
 struct list_head ptype_all __read_mostly;	/* Taps */
 static struct list_head offload_base __read_mostly;
@@ -4662,6 +4665,9 @@ static u32 netif_receive_generic_xdp(struct sk_buff *skb,
 
 	rxqueue = netif_get_rxqueue(skb);
 	xdp->rxq = &rxqueue->xdp_rxq;
+#ifdef CONFIG_XDP_LUA
+	xdp_lua_set_skb(skb);
+#endif /* CONFIG_XDP_LUA */
 
 	act = bpf_prog_run_xdp(xdp_prog, xdp);
 
@@ -6180,7 +6186,6 @@ static gro_result_t napi_frags_finish(struct napi_struct *napi,
 
 	return ret;
 }
-
 /* Upper GRO stack assumes network header starts at gro_offset=0
  * Drivers could call both napi_gro_frags() and napi_gro_receive()
  * We copy ethernet header into skb->data to have a common layout.
@@ -11274,6 +11279,9 @@ static int __init net_dev_init(void)
 
 	rc = cpuhp_setup_state_nocalls(CPUHP_NET_DEV_DEAD, "net/dev:dead",
 				       NULL, dev_cpu_dead);
+#ifdef CONFIG_XDP_LUA
+	xdp_lua_init();
+#endif /* CONFIG_XDP_LUA */
 	WARN_ON(rc < 0);
 	rc = 0;
 out:

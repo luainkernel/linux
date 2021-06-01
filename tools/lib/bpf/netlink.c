@@ -222,6 +222,132 @@ int bpf_set_link_xdp_fd(int ifindex, int fd, __u32 flags)
 	return __bpf_set_link_xdp_fd_replace(ifindex, fd, 0, flags);
 }
 
+/* #ifdef CONFIG_XDPLUA */
+int bpf_set_link_xdp_lua_script(const char *script, size_t script_len)
+{
+	struct sockaddr_nl sa;
+	int sock, seq = 0, len, ret = -1;
+	char buf[4096];
+	struct nlattr *nla, *nla_xdp_lua;
+	struct {
+		struct nlmsghdr  nh;
+		struct ifinfomsg ifinfo;
+		char             attrbuf[XDP_LUA_MAX_SCRIPT_LEN];
+	} req;
+	struct nlmsghdr *nh;
+	struct nlmsgerr *err;
+	socklen_t addrlen;
+	int one = 1;
+
+	memset(&sa, 0, sizeof(sa));
+	sa.nl_family = AF_NETLINK;
+
+	sock = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
+	if (sock < 0) {
+		return -errno;
+	}
+
+	if (setsockopt(sock, SOL_NETLINK, NETLINK_EXT_ACK,
+		       &one, sizeof(one)) < 0) {
+		fprintf(stderr, "Netlink error reporting not supported\n");
+	}
+
+	if (bind(sock, (struct sockaddr *)&sa, sizeof(sa)) < 0) {
+		ret = -errno;
+		goto cleanup;
+	}
+
+	addrlen = sizeof(sa);
+	if (getsockname(sock, (struct sockaddr *)&sa, &addrlen) < 0) {
+		ret = -errno;
+		goto cleanup;
+	}
+
+	if (addrlen != sizeof(sa)) {
+		ret = -LIBBPF_ERRNO__INTERNAL;
+		goto cleanup;
+	}
+
+	memset(&req, 0, sizeof(req));
+	req.nh.nlmsg_len = NLMSG_LENGTH(sizeof(struct ifinfomsg));
+	req.nh.nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK;
+	req.nh.nlmsg_type = RTM_SETLINK;
+	req.nh.nlmsg_pid = 0;
+	req.nh.nlmsg_seq = ++seq;
+	req.ifinfo.ifi_family = AF_UNSPEC;
+	req.ifinfo.ifi_index = 1;
+
+	/* started nested attribute for XDP */
+	nla = (struct nlattr *)(((char *)&req)
+				+ NLMSG_ALIGN(req.nh.nlmsg_len));
+	nla->nla_type = NLA_F_NESTED | IFLA_XDP;
+	nla->nla_len = NLA_HDRLEN;
+
+	/* add XDP LUA SCRIPT */
+	nla_xdp_lua = (struct nlattr *)((char *)nla + nla->nla_len);
+	nla_xdp_lua->nla_type = IFLA_XDP_LUA_PROG;
+	if (script) {
+		if (script_len > XDP_LUA_MAX_SCRIPT_LEN) {
+			fprintf(stderr, "script length cannot exceed %d bytes\n",
+					XDP_LUA_MAX_SCRIPT_LEN);
+			ret = -ENAMETOOLONG;
+			goto cleanup;
+		}
+
+		nla_xdp_lua->nla_len = NLA_HDRLEN + script_len;
+		memcpy((char *)nla_xdp_lua + NLA_HDRLEN, script, script_len);
+	} else {
+		ret = -EINVAL;
+		goto cleanup;
+	}
+	nla->nla_len += nla_xdp_lua->nla_len;
+
+	req.nh.nlmsg_len += NLA_ALIGN(nla->nla_len);
+
+	if (send(sock, &req, req.nh.nlmsg_len, 0) < 0) {
+		ret = -errno;
+		goto cleanup;
+	}
+
+	len = recv(sock, buf, sizeof(buf), 0);
+	if (len < 0) {
+		ret = -errno;
+		goto cleanup;
+	}
+
+	for (nh = (struct nlmsghdr *)buf; NLMSG_OK(nh, len);
+	     nh = NLMSG_NEXT(nh, len)) {
+		if (nh->nlmsg_pid != sa.nl_pid) {
+			ret = -LIBBPF_ERRNO__WRNGPID;
+			goto cleanup;
+		}
+		if (nh->nlmsg_seq != seq) {
+			ret = -LIBBPF_ERRNO__INVSEQ;
+			goto cleanup;
+		}
+		switch (nh->nlmsg_type) {
+		case NLMSG_ERROR:
+			err = (struct nlmsgerr *)NLMSG_DATA(nh);
+			if (!err->error)
+				continue;
+			ret = err->error;
+			libbpf_nla_dump_errormsg(nh);
+			goto cleanup;
+		case NLMSG_DONE:
+			break;
+		default:
+			break;
+		}
+	}
+
+	ret = 0;
+
+cleanup:
+	close(sock);
+	return ret;
+}
+/* #endif CONFIG_XDPLUA */
+
 static int __dump_link_nlmsg(struct nlmsghdr *nlh,
 			     libbpf_dump_nlmsg_t dump_link_nlmsg, void *cookie)
 {

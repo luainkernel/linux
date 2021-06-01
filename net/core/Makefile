@@ -8,10 +8,15 @@ obj-y := sock.o request_sock.o skbuff.o datagram.o stream.o scm.o \
 
 obj-$(CONFIG_SYSCTL) += sysctl_net_core.o
 
+CFLAGS_dev.o = -Ilib/lunatik/lua/ -D_KERNEL
+CFLAGS_filter.o = -Ilib/lunatik/lua/ -D_KERNEL \
+		-Ilib/luadata/ -Ilib/luaunpack/
+CFLAGS_rtnetlink.o = -Ilib/lunatik/lua/ -D_KERNEL
+CFLAGS_xdplua.o = -Ilib/lunatik/lua/ -Ilib/luadata -D_KERNEL
 obj-y		     += dev.o dev_addr_lists.o dst.o netevent.o \
 			neighbour.o rtnetlink.o utils.o link_watch.o filter.o \
 			sock_diag.o dev_ioctl.o tso.o sock_reuseport.o \
-			fib_notifier.o xdp.o flow_offload.o
+			fib_notifier.o xdp.o flow_offload.o xdplua.o
 
 obj-y += net-sysfs.o
 obj-$(CONFIG_PAGE_POOL) += page_pool.o

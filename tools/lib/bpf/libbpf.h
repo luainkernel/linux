@@ -512,6 +512,9 @@ struct bpf_xdp_set_link_opts {
 #define bpf_xdp_set_link_opts__last_field old_fd
 
 LIBBPF_API int bpf_set_link_xdp_fd(int ifindex, int fd, __u32 flags);
+/* #ifdef CONFIG_XDP_LUA */
+int bpf_set_link_xdp_lua_script(const char *script, size_t script_len);
+/* #endif CONFIG_XDP_LUA */
 LIBBPF_API int bpf_set_link_xdp_fd_opts(int ifindex, int fd, __u32 flags,
 					const struct bpf_xdp_set_link_opts *opts);
 LIBBPF_API int bpf_get_link_xdp_id(int ifindex, __u32 *prog_id, __u32 flags);
